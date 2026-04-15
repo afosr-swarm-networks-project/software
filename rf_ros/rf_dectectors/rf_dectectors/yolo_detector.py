@@ -18,26 +18,23 @@ class YoloDetectorNode(Node):
 
         self.declare_parameter("model_path", str(_default_model_path()))
         self.declare_parameter("conf_thresh", 0.2)
-        self.declare_parameter("input_topic", "/stft_node/stft")
-        self.declare_parameter("output_topic", "~/detections")
-        self.declare_parameter("image_topic", "~/image")
 
         self._model_path = str(self.get_parameter("model_path").value)
         self._conf_thresh = float(self.get_parameter("conf_thresh").value)
-        input_topic = str(self.get_parameter("input_topic").value)
-        output_topic = str(self.get_parameter("output_topic").value)
-        image_topic = str(self.get_parameter("image_topic").value)
+        stft_topic = "stft"
+        detection_topic = "detections"
+        image_topic = "stft_image"
 
         self._labels = ["Chirp", "Wideband", "Narrowband", "FHSS"]
         self._model = self._load_model(self._model_path)
 
-        self._pub = self.create_publisher(RfDetectionArray, output_topic, 10)
+        self._pub = self.create_publisher(RfDetectionArray, detection_topic, 10)
         self._image_pub = self.create_publisher(Image, image_topic, 10)
-        self._sub = self.create_subscription(StftFrame, input_topic, self._on_stft, 10)
+        self._sub = self.create_subscription(StftFrame, stft_topic, self._on_stft, 10)
 
         self.get_logger().info(
-            f"YoloDetectorNode ready: model={self._model_path} conf={self._conf_thresh:.2f} "
-            f"input={input_topic} output={output_topic} image={image_topic}"
+            f"YoloDetectorNode ready: model={self._model_path} "
+            f"conf={self._conf_thresh:.2f} "
         )
 
     def _load_model(self, model_path: str):

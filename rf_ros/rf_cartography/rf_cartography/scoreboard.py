@@ -14,22 +14,20 @@ class ScoreboardNode(Node):
     def __init__(self) -> None:
         super().__init__("scoreboard")
 
-        self.declare_parameter("input_topic", "/yolo_detector_node/detections")
-        self.declare_parameter("output_topic", "~/scores")
         self.declare_parameter("aggregation", "max")
 
-        input_topic = str(self.get_parameter("input_topic").value)
-        output_topic = str(self.get_parameter("output_topic").value)
+        detections_topic = "detections"
+        scores_topic = "scores"
         self._aggregation = str(self.get_parameter("aggregation").value)
 
-        self._pub = self.create_publisher(RfScoreArray, output_topic, 10)
+        self._pub = self.create_publisher(RfScoreArray, scores_topic, 10)
         self._sub = self.create_subscription(
-            RfDetectionArray, input_topic, self._on_detections, 10
+            RfDetectionArray, detections_topic, self._on_detections, 10
         )
 
         self.get_logger().info(
             "ScoreboardNode ready: "
-            f"input={input_topic} output={output_topic} aggregation={self._aggregation} "
+            f"aggregation={self._aggregation} "
         )
 
     def _on_detections(self, msg: RfDetectionArray) -> None:
@@ -78,4 +76,3 @@ def main(args=None) -> None:
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()

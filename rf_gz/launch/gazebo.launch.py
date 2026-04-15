@@ -71,6 +71,7 @@ def _launch_setup(context, *args, **kwargs):
     bridges = []
     for receiver in receivers:
         receiver_name = receiver["name"]
+        iq_topic = f"/rf/{receiver_name}/iq"
         bridges.append(
             Node(
                 package="ros_gz_bridge",
@@ -78,8 +79,8 @@ def _launch_setup(context, *args, **kwargs):
                 name=f"{receiver_name}_iq_bridge",
                 output="screen",
                 arguments=[
-                    f"/rf/{receiver_name}/iq@ros_gz_interfaces/msg/Float32Array@gz.msgs.Float_V"
-                ],
+                    f"{iq_topic}@ros_gz_interfaces/msg/Float32Array@gz.msgs.Float_V"
+                ]
             )
         )
         pipeline_groups.append(
@@ -88,7 +89,7 @@ def _launch_setup(context, *args, **kwargs):
                 IncludeLaunchDescription(
                     PythonLaunchDescriptionSource(pipeline_launch),
                     launch_arguments={
-                        "iq_topic": f"/rf/{receiver_name}/iq",
+                        "iq_topic": iq_topic,
                         "fs_hz": receiver["fs_hz"],
                         "center_freq_hz": center_freq_hz_value,
                         "stft_win_s": LaunchConfiguration("stft_win_s").perform(context),
@@ -96,8 +97,6 @@ def _launch_setup(context, *args, **kwargs):
                         "hop_size": LaunchConfiguration("hop_size").perform(context),
                         "model_path": LaunchConfiguration("model_path").perform(context),
                         "conf_thresh": LaunchConfiguration("conf_thresh").perform(context),
-                        "stft_topic": "stft_node/stft",
-                        "detections_topic": "yolo_detector_node/detections",
                     }.items(),
                 ),
             ])

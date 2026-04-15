@@ -26,14 +26,15 @@ class StftNode(Node):
         self._hop_size = max(
             int(self.declare_parameter("hop_size", 512).value), 1
         )
-        input_topic = str(self.declare_parameter("input_topic", "/rf/rx1/iq").value)
+        iq_topic = "iq"
+        stft_topic = "stft"
 
         self._buffer_size = max(int(self._fs_hz * stft_win_s), self._fft_size)
         self._iq_buffer = np.empty(0, dtype=np.complex128)
 
-        self._pub = self.create_publisher(StftFrame, "~/stft", 10)
+        self._pub = self.create_publisher(StftFrame, stft_topic, 10)
         self._sub = self.create_subscription(
-            Float32Array, input_topic, self._on_iq, 10
+            Float32Array, iq_topic, self._on_iq, 10
         )
 
         self.get_logger().info(
@@ -41,7 +42,6 @@ class StftNode(Node):
             f"fs={self._fs_hz:.0f} Hz  fc={self._center_freq_hz:.0f} Hz  "
             f"win={stft_win_s:.5f} s ({self._buffer_size} samp)  "
             f"fft={self._fft_size}  hop={self._hop_size}  "
-            f"topic={input_topic}"
         )
 
     def _on_iq(self, msg: Float32Array) -> None:

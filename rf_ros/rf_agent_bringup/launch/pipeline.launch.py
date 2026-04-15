@@ -19,7 +19,8 @@ def generate_launch_description() -> LaunchDescription:
     scoreboard_agg = LaunchConfiguration("scoreboard_agg")
 
     return LaunchDescription([
-        DeclareLaunchArgument("iq_topic", default_value="/rf/rx1/iq"),
+        DeclareLaunchArgument("iq_topic", default_value="iq"),
+        DeclareLaunchArgument("scores_topic", default_value="scores"),
         DeclareLaunchArgument("fs_hz", default_value="10000000.0"),
         DeclareLaunchArgument("center_freq_hz", default_value="2400000000.0"),
         DeclareLaunchArgument("stft_win_s", default_value="0.04915"),
@@ -27,9 +28,6 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("hop_size", default_value="512"),
         DeclareLaunchArgument("model_path", default_value="best.pt"),
         DeclareLaunchArgument("conf_thresh", default_value="0.2"),
-        DeclareLaunchArgument("stft_topic", default_value="/stft_node/stft"),
-        DeclareLaunchArgument("detections_topic", default_value="/yolo_detector_node/detections"),
-        DeclareLaunchArgument("scores_topic", default_value="/scoreboard_node/scores"),
         DeclareLaunchArgument("scoreboard_agg", default_value="max"),
         Node(
             package="rf_signal_proc",
@@ -41,9 +39,11 @@ def generate_launch_description() -> LaunchDescription:
                 "center_freq_hz": center_freq_hz,
                 "fft_size": fft_size,
                 "hop_size": hop_size,
-                "input_topic": iq_topic,
                 "stft_win_s": stft_win_s,
             }],
+            remappings=[
+                ("iq", iq_topic),
+            ]
         ),
         Node(
             package="rf_dectectors",
@@ -53,8 +53,6 @@ def generate_launch_description() -> LaunchDescription:
             parameters=[{
                 "model_path": model_path,
                 "conf_thresh": conf_thresh,
-                "input_topic": stft_topic,
-                "output_topic": detections_topic,
             }],
         ),
         Node(
@@ -63,9 +61,10 @@ def generate_launch_description() -> LaunchDescription:
             name="scoreboard_node",
             output="screen",
             parameters=[{
-                "input_topic": detections_topic,
-                "output_topic": scores_topic,
                 "aggregation": scoreboard_agg,
             }],
+            remappings=[
+                ("scores", scores_topic),
+            ]
         ),
     ])
