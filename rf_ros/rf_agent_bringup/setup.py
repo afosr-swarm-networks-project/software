@@ -14,8 +14,8 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="todo",
-    maintainer_email="todo@todo.com",
+    maintainer="Zhongzheng Zhang",
+    maintainer_email="zhangrenzhongzheng@outlook.com",
     description="Launch files for RF agent processing pipelines",
     license="Apache-2.0",
 )

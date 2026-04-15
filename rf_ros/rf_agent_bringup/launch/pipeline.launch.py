@@ -15,6 +15,8 @@ def generate_launch_description() -> LaunchDescription:
     conf_thresh = LaunchConfiguration("conf_thresh")
     stft_topic = LaunchConfiguration("stft_topic")
     detections_topic = LaunchConfiguration("detections_topic")
+    scores_topic = LaunchConfiguration("scores_topic")
+    scoreboard_agg = LaunchConfiguration("scoreboard_agg")
 
     return LaunchDescription([
         DeclareLaunchArgument("iq_topic", default_value="/rf/rx1/iq"),
@@ -27,6 +29,8 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("conf_thresh", default_value="0.2"),
         DeclareLaunchArgument("stft_topic", default_value="/stft_node/stft"),
         DeclareLaunchArgument("detections_topic", default_value="/yolo_detector_node/detections"),
+        DeclareLaunchArgument("scores_topic", default_value="/scoreboard_node/scores"),
+        DeclareLaunchArgument("scoreboard_agg", default_value="max"),
         Node(
             package="rf_signal_proc",
             executable="stft_node.py",
@@ -43,7 +47,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         Node(
             package="rf_dectectors",
-            executable="yolo_detector_node",
+            executable="yolo_detector",
             name="yolo_detector_node",
             output="screen",
             parameters=[{
@@ -51,6 +55,17 @@ def generate_launch_description() -> LaunchDescription:
                 "conf_thresh": conf_thresh,
                 "input_topic": stft_topic,
                 "output_topic": detections_topic,
+            }],
+        ),
+        Node(
+            package="rf_cartography",
+            executable="scoreboard",
+            name="scoreboard_node",
+            output="screen",
+            parameters=[{
+                "input_topic": detections_topic,
+                "output_topic": scores_topic,
+                "aggregation": scoreboard_agg,
             }],
         ),
     ])

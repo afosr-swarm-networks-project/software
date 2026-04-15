@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = "rf_visualization"
+package_name = "rf_cartography"
 
 setup(
     name=package_name,
@@ -10,13 +10,17 @@ setup(
         ("share/ament_index/resource_index/packages",
          [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
-        (f"share/{package_name}", ["plugin.xml"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="Zhongzheng Zhang",
     maintainer_email="zhangrenzhongzheng@outlook.com",
-    description="Visualization nodes for RF detections",
+    description="RF cartography scoring nodes",
     license="Apache-2.0",
     tests_require=["pytest"],
+    entry_points={
+        "console_scripts": [
+            "scoreboard = rf_cartography.scoreboard:main",
+        ],
+    },
 )

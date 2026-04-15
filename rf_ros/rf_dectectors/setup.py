@@ -14,14 +14,14 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="todo",
-    maintainer_email="todo@todo.com",
+    maintainer="Zhongzheng Zhang",
+    maintainer_email="zhangrenzhongzheng@outlook.com",
     description="RF detector nodes",
     license="Apache-2.0",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "yolo_detector_node = rf_dectectors.yolo_detector_node:main",
+            "yolo_detector = rf_dectectors.yolo_detector:main",
         ],
     },
 )
