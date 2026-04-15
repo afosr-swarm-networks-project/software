@@ -5,6 +5,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:
+    use_sim_time = LaunchConfiguration("use_sim_time")
     iq_topic = LaunchConfiguration("iq_topic")
     fs_hz = LaunchConfiguration("fs_hz")
     center_freq_hz = LaunchConfiguration("center_freq_hz")
@@ -13,12 +14,11 @@ def generate_launch_description() -> LaunchDescription:
     hop_size = LaunchConfiguration("hop_size")
     model_path = LaunchConfiguration("model_path")
     conf_thresh = LaunchConfiguration("conf_thresh")
-    stft_topic = LaunchConfiguration("stft_topic")
-    detections_topic = LaunchConfiguration("detections_topic")
     scores_topic = LaunchConfiguration("scores_topic")
     scoreboard_agg = LaunchConfiguration("scoreboard_agg")
 
     return LaunchDescription([
+        DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument("iq_topic", default_value="iq"),
         DeclareLaunchArgument("scores_topic", default_value="scores"),
         DeclareLaunchArgument("fs_hz", default_value="10000000.0"),
@@ -40,6 +40,7 @@ def generate_launch_description() -> LaunchDescription:
                 "fft_size": fft_size,
                 "hop_size": hop_size,
                 "stft_win_s": stft_win_s,
+                "use_sim_time": use_sim_time,
             }],
             remappings=[
                 ("iq", iq_topic),
@@ -53,6 +54,7 @@ def generate_launch_description() -> LaunchDescription:
             parameters=[{
                 "model_path": model_path,
                 "conf_thresh": conf_thresh,
+                "use_sim_time": use_sim_time,
             }],
         ),
         Node(
@@ -62,6 +64,7 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             parameters=[{
                 "aggregation": scoreboard_agg,
+                "use_sim_time": use_sim_time,
             }],
             remappings=[
                 ("scores", scores_topic),

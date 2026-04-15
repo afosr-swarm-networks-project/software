@@ -1,12 +1,14 @@
 import os
 import xml.etree.ElementTree as ET
 
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace
+
+from pathlib import Path
 
 
 def _as_float_string(value: str, default: str) -> str:
@@ -44,9 +46,9 @@ def _world_config(world_path: str) -> tuple[list[dict[str, str]], str]:
 
 
 def _launch_setup(context, *args, **kwargs):
-    ros_gz_sim_share = get_package_share_directory("ros_gz_sim")
-    rf_agent_bringup_share = get_package_share_directory("rf_agent_bringup")
-    world_path = LaunchConfiguration("world").perform(context)
+    ros_gz_sim_share = get_package_share_path("ros_gz_sim")
+    rf_agent_bringup_share = get_package_share_path("rf_agent_bringup")
+    world_path = Path(LaunchConfiguration("world").perform(context))
     receivers, default_center_freq_hz = _world_config(world_path)
     center_freq_hz_value = LaunchConfiguration("center_freq_hz").perform(context)
     if not center_freq_hz_value:
@@ -54,7 +56,7 @@ def _launch_setup(context, *args, **kwargs):
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(ros_gz_sim_share, "launch", "gz_sim.launch.py")
+            ros_gz_sim_share / "launch" / "gz_sim.launch.py"
         ),
         launch_arguments={
             "gz_args": f"-r {world_path}",
@@ -62,9 +64,7 @@ def _launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    pipeline_launch = os.path.join(
-        rf_agent_bringup_share, "launch", "pipeline.launch.py"
-    )
+    pipeline_launch = rf_agent_bringup_share / "launch" / "pipeline.launch.py"
 
     actions = [gz_sim]
     pipeline_groups = []
@@ -79,8 +79,9 @@ def _launch_setup(context, *args, **kwargs):
                 name=f"{receiver_name}_iq_bridge",
                 output="screen",
                 arguments=[
-                    f"{iq_topic}@ros_gz_interfaces/msg/Float32Array@gz.msgs.Float_V"
-                ]
+                    f"{iq_topic}@ros_gz_interfaces/msg/Float32Array@gz.msgs.Float_V",
+                    '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+                ],
             )
         )
         pipeline_groups.append(
@@ -97,6 +98,7 @@ def _launch_setup(context, *args, **kwargs):
                         "hop_size": LaunchConfiguration("hop_size").perform(context),
                         "model_path": LaunchConfiguration("model_path").perform(context),
                         "conf_thresh": LaunchConfiguration("conf_thresh").perform(context),
+                        "use_sim_time": "true",
                     }.items(),
                 ),
             ])
@@ -108,14 +110,10 @@ def _launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description() -> LaunchDescription:
-    rf_gz_share = get_package_share_directory("rf_gz")
-    rf_dectectors_share = get_package_share_directory("rf_dectectors")
-    default_world_path = os.path.join(
-        rf_gz_share, "worlds", "demo_world.sdf"
-    )
-    default_model_path = os.path.join(
-        rf_dectectors_share, "resource", "best.pt"
-    )
+    rf_gz_share = get_package_share_path("rf_gz")
+    rf_dectectors_share = get_package_share_path("rf_dectectors")
+    default_world_path = rf_gz_share / "worlds" / "demo_world.sdf"
+    default_model_path = rf_dectectors_share / "resource" / "best.pt"
 
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value=default_world_path),
