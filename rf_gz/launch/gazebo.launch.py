@@ -60,6 +60,26 @@ def _robot_state_publisher_node(label: str, urdf_str: str, rsp_cfg) -> Node:
     )
 
 
+def _static_transform_publisher_node(label: str, pose: dict, stp_cfg: dict) -> Node:
+    """Build a tf2_ros static_transform_publisher Node from pose and config."""
+    return Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name=f"{label}_static_tf",
+        output="screen",
+        arguments=[
+            "--frame-id",       stp_cfg["parent_frame"],
+            "--child-frame-id", stp_cfg["child_frame"],
+            "--x",     str(pose.get("x",     0.0)),
+            "--y",     str(pose.get("y",     0.0)),
+            "--z",     str(pose.get("z",     0.0)),
+            "--roll",  str(pose.get("roll",  0.0)),
+            "--pitch", str(pose.get("pitch", 0.0)),
+            "--yaw",   str(pose.get("yaw",   0.0)),
+        ],
+    )
+
+
 def _pipeline_group(pipeline_launch: Path, pipeline_name: str, pipeline_cfg: dict) -> GroupAction:
     """Build a pipeline GroupAction for one named pipeline entry."""
     return GroupAction([
@@ -96,6 +116,15 @@ def _create_nodes(urdf_dir: Path, pipeline_launch: Path, config: dict) -> list:
             rsp_cfg = instance.get("robot_state_publisher")
             if rsp_cfg:
                 actions.append(_robot_state_publisher_node(label, urdf_str, rsp_cfg))
+
+            # Optional: static_transform_publisher
+            stp_cfg = instance.get("static_transform_publisher")
+            if stp_cfg:
+                if not isinstance(stp_cfg, dict) or "parent_frame" not in stp_cfg or "child_frame" not in stp_cfg:
+                    print(f"[WARN] {label}: static_transform_publisher requires parent_frame and child_frame — skipping")
+                else:
+                    pose = instance.get("pose") or {}
+                    actions.append(_static_transform_publisher_node(label, pose, stp_cfg))
 
             # Optional: pipelines
             for pipeline_item in (instance.get("pipelines") or []):

@@ -18,6 +18,9 @@ demo_receiver.urdf.xacro:
     pose: {x: 10.0, y: -20.0, z: 0.5, yaw: 1.5707963}
     robot_state_publisher:
       frame_prefix: rx_yagi/
+    static_transform_publisher:
+      parent_frame: world
+      child_frame: rx_yagi/rf_link
     args:
       iq_topic: /rf/rx_yagi/iq
     pipelines:
