@@ -12,6 +12,8 @@ find_package(gz_sim_vendor REQUIRED)
 find_package(gz-sim8 REQUIRED)
 find_package(gz_msgs_vendor REQUIRED)
 find_package(gz-msgs10 REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rf_msgs REQUIRED)
 
 add_library(rf_world SHARED
   src/RfWorldPlugin.cc
@@ -38,6 +40,7 @@ target_link_libraries(rf_world
   gz-sim8::gz-sim8
   gz-msgs10::gz-msgs10
 )
+ament_target_dependencies(rf_world rclcpp rf_msgs)
 
 install(TARGETS rf_world
   ARCHIVE DESTINATION lib

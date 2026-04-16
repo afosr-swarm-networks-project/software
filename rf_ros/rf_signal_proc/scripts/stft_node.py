@@ -8,8 +8,7 @@ from typing import Optional
 import numpy as np
 from rclpy.node import Node
 import rclpy
-from ros_gz_interfaces.msg import Float32Array
-from rf_msgs.msg import StftFrame
+from rf_msgs.msg import IqFrame, StftFrame
 from scipy import signal
 
 
@@ -17,11 +16,12 @@ class StftNode(Node):
     def __init__(self) -> None:
         super().__init__("stft_node")
 
+        # Fallback values used until the first IqFrame arrives with metadata.
         self._fs_hz = float(self.declare_parameter("fs_hz", 1000.0).value)
         self._center_freq_hz = float(
             self.declare_parameter("center_freq_hz", 2.4e9).value
         )
-        stft_win_s = float(self.declare_parameter("stft_win_s", 0.04915).value)
+        self._stft_win_s = float(self.declare_parameter("stft_win_s", 0.04915).value)
         self._fft_size = max(int(self.declare_parameter("fft_size", 2048).value), 2)
         self._hop_size = max(
             int(self.declare_parameter("hop_size", 512).value), 1
@@ -29,22 +29,31 @@ class StftNode(Node):
         iq_topic = "iq"
         stft_topic = "stft"
 
-        self._buffer_size = max(int(self._fs_hz * stft_win_s), self._fft_size)
+        self._buffer_size = max(int(self._fs_hz * self._stft_win_s), self._fft_size)
         self._iq_buffer = np.empty(0, dtype=np.complex128)
 
         self._pub = self.create_publisher(StftFrame, stft_topic, 10)
         self._sub = self.create_subscription(
-            Float32Array, iq_topic, self._on_iq, 10
+            IqFrame, iq_topic, self._on_iq, 10
         )
 
         self.get_logger().info(
             "StftNode ready: "
             f"fs={self._fs_hz:.0f} Hz  fc={self._center_freq_hz:.0f} Hz  "
-            f"win={stft_win_s:.5f} s ({self._buffer_size} samp)  "
+            f"win={self._stft_win_s:.5f} s ({self._buffer_size} samp)  "
             f"fft={self._fft_size}  hop={self._hop_size}  "
         )
 
-    def _on_iq(self, msg: Float32Array) -> None:
+    def _on_iq(self, msg: IqFrame) -> None:
+        # Update fs/fc from message metadata; recompute buffer size if fs changed.
+        if msg.fs_hz > 0.0 and msg.fs_hz != self._fs_hz:
+            self._fs_hz = msg.fs_hz
+            self._buffer_size = max(
+                int(self._fs_hz * self._stft_win_s), self._fft_size
+            )
+        if msg.fc_hz > 0.0:
+            self._center_freq_hz = msg.fc_hz
+
         data = np.asarray(msg.data, dtype=np.float64)
         if data.size < 2:
             return

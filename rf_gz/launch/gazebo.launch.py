@@ -49,10 +49,7 @@ def _launch_setup(context, *args, **kwargs):
     ros_gz_sim_share = get_package_share_path("ros_gz_sim")
     rf_agent_bringup_share = get_package_share_path("rf_agent_bringup")
     world_path = Path(LaunchConfiguration("world").perform(context))
-    receivers, default_center_freq_hz = _world_config(world_path)
-    center_freq_hz_value = LaunchConfiguration("center_freq_hz").perform(context)
-    if not center_freq_hz_value:
-        center_freq_hz_value = default_center_freq_hz
+    receivers, _ = _world_config(world_path)
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -66,24 +63,19 @@ def _launch_setup(context, *args, **kwargs):
 
     pipeline_launch = rf_agent_bringup_share / "launch" / "pipeline.launch.py"
 
-    actions = [gz_sim]
+    clock_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="clock_bridge",
+        output="screen",
+        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+    )
+
+    actions = [gz_sim, clock_bridge]
     pipeline_groups = []
-    bridges = []
     for receiver in receivers:
         receiver_name = receiver["name"]
         iq_topic = f"/rf/{receiver_name}/iq"
-        bridges.append(
-            Node(
-                package="ros_gz_bridge",
-                executable="parameter_bridge",
-                name=f"{receiver_name}_iq_bridge",
-                output="screen",
-                arguments=[
-                    f"{iq_topic}@ros_gz_interfaces/msg/Float32Array@gz.msgs.Float_V",
-                    '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-                ],
-            )
-        )
         pipeline_groups.append(
             GroupAction([
                 PushRosNamespace(receiver_name),
@@ -91,8 +83,6 @@ def _launch_setup(context, *args, **kwargs):
                     PythonLaunchDescriptionSource(pipeline_launch),
                     launch_arguments={
                         "iq_topic": iq_topic,
-                        "fs_hz": receiver["fs_hz"],
-                        "center_freq_hz": center_freq_hz_value,
                         "stft_win_s": LaunchConfiguration("stft_win_s").perform(context),
                         "fft_size": LaunchConfiguration("fft_size").perform(context),
                         "hop_size": LaunchConfiguration("hop_size").perform(context),
@@ -104,7 +94,6 @@ def _launch_setup(context, *args, **kwargs):
             ])
         )
 
-    actions.extend(bridges)
     actions.extend(pipeline_groups)
     return actions
 
@@ -122,6 +111,5 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("stft_win_s", default_value="0.04915"),
         DeclareLaunchArgument("fft_size", default_value="2048"),
         DeclareLaunchArgument("hop_size", default_value="512"),
-        DeclareLaunchArgument("center_freq_hz", default_value=""),
         OpaqueFunction(function=_launch_setup),
     ])

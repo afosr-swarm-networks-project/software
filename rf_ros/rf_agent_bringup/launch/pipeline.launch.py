@@ -7,8 +7,6 @@ from launch_ros.actions import Node
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     iq_topic = LaunchConfiguration("iq_topic")
-    fs_hz = LaunchConfiguration("fs_hz")
-    center_freq_hz = LaunchConfiguration("center_freq_hz")
     stft_win_s = LaunchConfiguration("stft_win_s")
     fft_size = LaunchConfiguration("fft_size")
     hop_size = LaunchConfiguration("hop_size")
@@ -21,8 +19,6 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument("iq_topic", default_value="iq"),
         DeclareLaunchArgument("scores_topic", default_value="scores"),
-        DeclareLaunchArgument("fs_hz", default_value="10000000.0"),
-        DeclareLaunchArgument("center_freq_hz", default_value="2400000000.0"),
         DeclareLaunchArgument("stft_win_s", default_value="0.04915"),
         DeclareLaunchArgument("fft_size", default_value="2048"),
         DeclareLaunchArgument("hop_size", default_value="512"),
@@ -35,8 +31,6 @@ def generate_launch_description() -> LaunchDescription:
             name="stft_node",
             output="screen",
             parameters=[{
-                "fs_hz": fs_hz,
-                "center_freq_hz": center_freq_hz,
                 "fft_size": fft_size,
                 "hop_size": hop_size,
                 "stft_win_s": stft_win_s,
