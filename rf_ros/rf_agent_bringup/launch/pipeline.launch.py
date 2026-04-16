@@ -1,3 +1,4 @@
+from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -15,6 +16,8 @@ def generate_launch_description() -> LaunchDescription:
     scores_topic = LaunchConfiguration("scores_topic")
     scoreboard_agg = LaunchConfiguration("scoreboard_agg")
 
+    
+
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument("iq_topic", default_value="iq"),
@@ -22,7 +25,9 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("stft_win_s", default_value="0.04915"),
         DeclareLaunchArgument("fft_size", default_value="2048"),
         DeclareLaunchArgument("hop_size", default_value="512"),
-        DeclareLaunchArgument("model_path", default_value="best.pt"),
+        DeclareLaunchArgument("model_path", default_value=str(
+            get_package_share_path("rf_dectectors") / "resource" / "best.pt"
+        )),
         DeclareLaunchArgument("conf_thresh", default_value="0.2"),
         DeclareLaunchArgument("scoreboard_agg", default_value="max"),
         Node(

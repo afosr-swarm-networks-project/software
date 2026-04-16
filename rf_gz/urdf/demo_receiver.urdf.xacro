@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rx_yagi">
+  <xacro:arg name="iq_topic" default="/rf/rx/iq"/>
+
+  <link name="rf_link">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.4 0.4 0.4"/></geometry>
+      <material name="color">
+        <color rgba="1.0 0.4 0.2 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry><box size="0.4 0.4 0.4"/></geometry>
+    </collision>
+  </link>
+
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="rf_gz::RfModelPlugin" filename="librf_model.so">
+      <receiver name="rx_yagi" type="sdf" link="rf_link">
+        <iq_topic>$(arg iq_topic)</iq_topic>
+        <cf_hz>2.4e9</cf_hz>
+        <fs_hz>10e6</fs_hz>
+        <nf_db>6.0</nf_db>
+        <antenna type="yagi">
+          <g_peak_dbi>13.0</g_peak_dbi>
+          <hpbw_deg>40.0</hpbw_deg>
+          <sidelobe_floor_db>-20.0</sidelobe_floor_db>
+        </antenna>
+      </receiver>
+    </plugin>
+  </gazebo>
+
+</robot>

@@ -15,6 +15,7 @@ find_package(gz-msgs10 REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rf_msgs REQUIRED)
 
+# ── World simulation plugin ───────────────────────────────────────────────────
 add_library(rf_world SHARED
   src/RfWorldPlugin.cc
   src/antennas/OmniAntenna.cc
@@ -42,7 +43,22 @@ target_link_libraries(rf_world
 )
 ament_target_dependencies(rf_world rclcpp rf_msgs)
 
-install(TARGETS rf_world
+# ── Model scanner plugin ──────────────────────────────────────────────────────
+# Separate .so so each library has exactly one GzPluginHook symbol.
+add_library(rf_model SHARED
+  src/RfModelPlugin.cc
+)
+
+target_include_directories(rf_model PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(rf_model
+  gz-sim8::gz-sim8
+)
+
+install(TARGETS rf_world rf_model
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -58,6 +74,14 @@ install(DIRECTORY worlds/
 
 install(DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
+)
+
+install(DIRECTORY urdf/
+  DESTINATION share/${PROJECT_NAME}/urdf
+)
+
+install(DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/config
 )
 
 ament_package()

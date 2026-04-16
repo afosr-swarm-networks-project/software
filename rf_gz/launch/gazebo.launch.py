@@ -1,5 +1,5 @@
-import os
-import xml.etree.ElementTree as ET
+import yaml
+import xacro
 
 from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
@@ -11,57 +11,123 @@ from launch_ros.actions import Node, PushRosNamespace
 from pathlib import Path
 
 
-def _as_float_string(value: str, default: str) -> str:
-    text = value.strip() if value is not None else ""
-    if not text:
-        return default
-    return str(float(text))
+def _load_config(config_path: Path) -> dict:
+    with open(config_path) as f:
+        return yaml.safe_load(f) or {}
 
 
-def _world_config(world_path: str) -> tuple[list[dict[str, str]], str]:
-    tree = ET.parse(world_path)
-    root = tree.getroot()
-    plugin = root.find(".//plugin[@name='rf_gz::RfWorldPlugin']")
-    if plugin is None:
-      raise RuntimeError(f"rf_gz world plugin not found in {world_path}")
+def _load_model(urdf_dir: Path, xacro_file: str, args: dict) -> str:
+    """Process a xacro file with the given args and return the URDF string."""
+    xacro_path = urdf_dir / xacro_file
+    mappings = {k: str(v) for k, v in args.items()}
+    doc = xacro.process_file(str(xacro_path), mappings=mappings)
+    return doc.toxml()
 
-    transmitters = plugin.findall("transmitter")
-    default_center_freq_hz = "2400000000.0"
-    if transmitters:
-        cf_text = transmitters[0].findtext("cf_hz")
-        if cf_text:
-            default_center_freq_hz = _as_float_string(cf_text, default_center_freq_hz)
 
-    receivers = []
-    for receiver in plugin.findall("receiver"):
-        name = receiver.attrib.get("name")
-        if not name:
+def _spawn_node(label: str, instance: dict, urdf_str: str) -> Node:
+    """Build a ros_gz_sim create Node that spawns one RF model."""
+    pose = instance.get("pose") or {}
+    arguments = [
+        "-string", urdf_str,
+        "-x", str(pose.get("x", 0.0)),
+        "-y", str(pose.get("y", 0.0)),
+        "-z", str(pose.get("z", 0.0)),
+        "-R", str(pose.get("roll",  0.0)),
+        "-P", str(pose.get("pitch", 0.0)),
+        "-Y", str(pose.get("yaw",   0.0)),
+    ]
+    if "name" in instance:
+        arguments += ["-name", instance["name"]]
+
+    return Node(
+        package="ros_gz_sim",
+        executable="create",
+        name=f"spawn_{label}",
+        output="screen",
+        arguments=arguments,
+    )
+
+
+def _robot_state_publisher_node(label: str, urdf_str: str, rsp_cfg) -> Node:
+    """Build a robot_state_publisher Node."""
+    extra = rsp_cfg if isinstance(rsp_cfg, dict) else {}
+    return Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name=f"{label}_state_publisher",
+        output="screen",
+        parameters=[{"robot_description": urdf_str, "use_sim_time": True, **extra}],
+    )
+
+
+def _pipeline_group(pipeline_launch: Path, pipeline_name: str, pipeline_cfg: dict) -> GroupAction:
+    """Build a pipeline GroupAction for one named pipeline entry."""
+    return GroupAction([
+        PushRosNamespace(pipeline_name),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(str(pipeline_launch)),
+            launch_arguments={
+                **{k: str(v) for k, v in pipeline_cfg.items()},
+                "use_sim_time": "true",
+            }.items(),
+        ),
+    ])
+
+
+def _create_nodes(urdf_dir: Path, pipeline_launch: Path, config: dict) -> list:
+    """Iterate all entries in the config and build the full list of launch actions."""
+    actions = []
+
+    for xacro_file, instances in config.items():
+        if not instances:
             continue
-        receivers.append({
-            "name": name,
-            "fs_hz": _as_float_string(receiver.findtext("fs_hz"), "1000.0"),
-        })
+        for i, instance in enumerate(instances):
+            instance = instance or {}
+            args = instance.get("args") or {}
+            file_stem = Path(Path(xacro_file).stem).stem  # strip both .urdf.xacro extensions
+            label = instance.get("name") or f"{file_stem}_{i}"
 
-    return receivers, default_center_freq_hz
+            urdf_str = _load_model(urdf_dir, xacro_file, args)
+
+            # Spawn the model
+            actions.append(_spawn_node(label, instance, urdf_str))
+
+            # Optional: robot_state_publisher
+            rsp_cfg = instance.get("robot_state_publisher")
+            if rsp_cfg:
+                actions.append(_robot_state_publisher_node(label, urdf_str, rsp_cfg))
+
+            # Optional: pipelines
+            for pipeline_item in (instance.get("pipelines") or []):
+                for pipeline_name, pipeline_cfg in pipeline_item.items():
+                    actions.append(
+                        _pipeline_group(pipeline_launch, pipeline_name, pipeline_cfg or {})
+                    )
+
+    return actions
 
 
 def _launch_setup(context, *args, **kwargs):
-    ros_gz_sim_share = get_package_share_path("ros_gz_sim")
+    ros_gz_sim_share       = get_package_share_path("ros_gz_sim")
     rf_agent_bringup_share = get_package_share_path("rf_agent_bringup")
-    world_path = Path(LaunchConfiguration("world").perform(context))
-    receivers, _ = _world_config(world_path)
+    rf_gz_share            = get_package_share_path("rf_gz")
+
+    world_path      = Path(LaunchConfiguration("world").perform(context))
+    config_path     = Path(LaunchConfiguration("config").perform(context))
+    urdf_dir        = Path(rf_gz_share) / "urdf"
+    pipeline_launch = Path(rf_agent_bringup_share) / "launch" / "pipeline.launch.py"
+
+    config = _load_config(config_path)
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            ros_gz_sim_share / "launch" / "gz_sim.launch.py"
+            str(ros_gz_sim_share / "launch" / "gz_sim.launch.py")
         ),
         launch_arguments={
             "gz_args": f"-r {world_path}",
             "on_exit_shutdown": "true",
         }.items(),
     )
-
-    pipeline_launch = rf_agent_bringup_share / "launch" / "pipeline.launch.py"
 
     clock_bridge = Node(
         package="ros_gz_bridge",
@@ -72,44 +138,17 @@ def _launch_setup(context, *args, **kwargs):
     )
 
     actions = [gz_sim, clock_bridge]
-    pipeline_groups = []
-    for receiver in receivers:
-        receiver_name = receiver["name"]
-        iq_topic = f"/rf/{receiver_name}/iq"
-        pipeline_groups.append(
-            GroupAction([
-                PushRosNamespace(receiver_name),
-                IncludeLaunchDescription(
-                    PythonLaunchDescriptionSource(pipeline_launch),
-                    launch_arguments={
-                        "iq_topic": iq_topic,
-                        "stft_win_s": LaunchConfiguration("stft_win_s").perform(context),
-                        "fft_size": LaunchConfiguration("fft_size").perform(context),
-                        "hop_size": LaunchConfiguration("hop_size").perform(context),
-                        "model_path": LaunchConfiguration("model_path").perform(context),
-                        "conf_thresh": LaunchConfiguration("conf_thresh").perform(context),
-                        "use_sim_time": "true",
-                    }.items(),
-                ),
-            ])
-        )
-
-    actions.extend(pipeline_groups)
+    actions.extend(_create_nodes(urdf_dir, pipeline_launch, config))
     return actions
 
 
 def generate_launch_description() -> LaunchDescription:
-    rf_gz_share = get_package_share_path("rf_gz")
-    rf_dectectors_share = get_package_share_path("rf_dectectors")
-    default_world_path = rf_gz_share / "worlds" / "demo_world.sdf"
-    default_model_path = rf_dectectors_share / "resource" / "best.pt"
+    rf_gz_share         = get_package_share_path("rf_gz")
+    default_world_path  = rf_gz_share / "worlds" / "demo_world.sdf"
+    default_config_path = rf_gz_share / "config"  / "demo_config.yaml"
 
     return LaunchDescription([
-        DeclareLaunchArgument("world", default_value=default_world_path),
-        DeclareLaunchArgument("model_path", default_value=default_model_path),
-        DeclareLaunchArgument("conf_thresh", default_value="0.2"),
-        DeclareLaunchArgument("stft_win_s", default_value="0.04915"),
-        DeclareLaunchArgument("fft_size", default_value="2048"),
-        DeclareLaunchArgument("hop_size", default_value="512"),
+        DeclareLaunchArgument("world",  default_value=str(default_world_path)),
+        DeclareLaunchArgument("config", default_value=str(default_config_path)),
         OpaqueFunction(function=_launch_setup),
     ])

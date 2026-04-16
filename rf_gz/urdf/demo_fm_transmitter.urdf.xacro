@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="tx_fm">
+
+  <link name="rf_link">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.4 0.4 0.4"/></geometry>
+      <material name="color">
+        <color rgba="0.7 0.2 0.9 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry><box size="0.4 0.4 0.4"/></geometry>
+    </collision>
+  </link>
+
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="rf_gz::RfModelPlugin" filename="librf_model.so">
+      <transmitter name="tx_fm" type="sdf" link="rf_link">
+        <power_dbm>20</power_dbm>
+        <cf_hz>2.401e9</cf_hz>
+        <source type="fm">
+          <deviation_hz>75000</deviation_hz>
+          <audio_hz>3000</audio_hz>
+        </source>
+        <antenna type="omni">
+          <gain_dbi>3.0</gain_dbi>
+        </antenna>
+      </transmitter>
+    </plugin>
+  </gazebo>
+
+</robot>

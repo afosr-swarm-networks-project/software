@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="tx_fhss">
+
+  <link name="rf_link">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <geometry><box size="0.4 0.4 0.4"/></geometry>
+      <material name="color">
+        <color rgba="1.0 0.9 0.1 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry><box size="0.4 0.4 0.4"/></geometry>
+    </collision>
+  </link>
+
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="rf_gz::RfModelPlugin" filename="librf_model.so">
+      <transmitter name="tx_fhss" type="sdf" link="rf_link">
+        <power_dbm>20</power_dbm>
+        <cf_hz>2.4e9</cf_hz>
+        <source type="fhss">
+          <bandwidth_hz>20e6</bandwidth_hz>
+          <num_channels>10</num_channels>
+          <hop_rate_hz>1000</hop_rate_hz>
+        </source>
+        <antenna type="omni">
+          <gain_dbi>3.0</gain_dbi>
+        </antenna>
+      </transmitter>
+    </plugin>
+  </gazebo>
+
+</robot>
