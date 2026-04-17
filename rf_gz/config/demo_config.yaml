@@ -1,3 +1,5 @@
+bridge_config: demo_bridges.yaml
+
 models:
   # ── Transmitters ──────────────────────────────────────────────────────────
   tx_wifi:
@@ -30,26 +32,18 @@ models:
     model:
       file: demo_receiver.urdf.xacro
       args:
-        iq_topic: /rf/rx_vehicle/iq
+        namespace: rx_vehicle
     pose: {x: 10.0, y: -20.0, z: 0.0, yaw: 1.5707963}
     ros:
-      bridge:
-        - ros_topic_name: joint_states
-          gz_topic_name: /model/rx_vehicle/joint_state
-          ros_type_name: sensor_msgs/msg/JointState
-          gz_type_name: gz.msgs.Model
-          direction: GZ_TO_ROS
-      robot_state_publisher:
-        frame_prefix: rx_vehicle/
+      robot_state_publisher: {}
       static_transform_publisher:
-        - parent_frame: world
+        - parent_frame: rx_vehicle
           child_frame: rx_vehicle/base_link
-          x: 10.0
-          y: -20.0
+          x: 0.0
+          y: 0.0
           z: 0.0
-          yaw: 1.5707963 
       pipeline:
-        - iq_topic: /rf/rx_vehicle/iq
+        - iq_topic: rx_vehicle/iq
           conf_thresh: 0.2
           stft_win_s: 0.04915
           fft_size: 2048

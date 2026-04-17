@@ -1,4 +1,3 @@
-from networkx import nodes
 import yaml
 import xacro
 
@@ -46,15 +45,6 @@ def _spawn_node(label: str, instance: dict, urdf_str: str) -> Node:
     )
 
 
-def _create_bridge(bridge_cfgs: list) -> list[Node]:
-    return Node(
-        package="ros_gz_bridge",
-        executable="parameter_bridge",
-        name="bridge",
-        output="screen",
-        parameters=[{"config": yaml.dump(bridge_cfgs)}],
-    )
-
 def _create_rsp(urdf_str: str, rsp_cfg: dict) -> Node:
     return Node(
         package="robot_state_publisher",
@@ -64,7 +54,8 @@ def _create_rsp(urdf_str: str, rsp_cfg: dict) -> Node:
         parameters=[{"robot_description": urdf_str, "use_sim_time": True, **rsp_cfg}],
     )
 
-def _create_static_tfs(stp_cfgs: list) -> list[Node]:
+
+def _create_static_tfs(stp_cfgs: list) -> list:
     nodes = []
     for i, stp in enumerate(stp_cfgs):
         if "parent_frame" not in stp or "child_frame" not in stp:
@@ -74,6 +65,7 @@ def _create_static_tfs(stp_cfgs: list) -> list[Node]:
             executable="static_transform_publisher",
             name=f"static_tf_{i}",
             output="screen",
+            parameters=[{"use_sim_time": True}],
             arguments=[
                 "--frame-id",       stp["parent_frame"],
                 "--child-frame-id", stp["child_frame"],
@@ -87,25 +79,25 @@ def _create_static_tfs(stp_cfgs: list) -> list[Node]:
         ))
     return nodes
 
-def _create_pipelines(pipeline_cfgs: list, pipeline_launch: Path) -> list[IncludeLaunchDescription]:
-    includes = []
-    for p in pipeline_cfgs:
-        includes.append(IncludeLaunchDescription(
+
+def _create_pipelines(pipeline_cfgs: list, pipeline_launch: Path) -> list:
+    return [
+        IncludeLaunchDescription(
             PythonLaunchDescriptionSource(str(pipeline_launch)),
             launch_arguments={
                 **{k: str(v) for k, v in p.items()},
                 "use_sim_time": "true",
             }.items(),
-        ))
-    return includes
+        )
+        for p in pipeline_cfgs
+    ]
 
-def _ros_group(label: str, urdf_str: str, pose: dict, ros_cfg: dict,
+
+def _ros_group(label: str, urdf_str: str, ros_cfg: dict,
                pipeline_launch: Path) -> GroupAction:
     """Wrap all ROS integration nodes for one model in a shared namespace."""
     actions = []
 
-    if "bridge" in ros_cfg:
-        actions.append(_create_bridge(ros_cfg["bridge"]))
     if "robot_state_publisher" in ros_cfg:
         actions.append(_create_rsp(urdf_str, ros_cfg["robot_state_publisher"]))
     if "static_transform_publisher" in ros_cfg:
@@ -131,8 +123,7 @@ def _create_nodes(urdf_dir: Path, pipeline_launch: Path, models_cfg: dict) -> li
 
         ros_cfg = instance.get("ros")
         if ros_cfg:
-            pose = instance.get("pose") or {}
-            actions.append(_ros_group(label, urdf_str, pose, ros_cfg, pipeline_launch))
+            actions.append(_ros_group(label, urdf_str, ros_cfg, pipeline_launch))
 
     return actions
 
@@ -159,15 +150,21 @@ def _launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    clock_bridge = Node(
+    bridge_cfg_name = config.get("bridge_config")
+    bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
-        name="clock_bridge",
+        name="bridge",
         output="screen",
-        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
-    )
+        parameters=[{
+            "config_file": str(config_path.parent / bridge_cfg_name),
+            "use_sim_time": True,
+        }],
+    ) if bridge_cfg_name else None
 
-    actions = [gz_sim, clock_bridge]
+    actions = [gz_sim]
+    if bridge:
+        actions.append(bridge)
     actions.extend(_create_nodes(urdf_dir, pipeline_launch, config.get("models")))
     return actions
 
