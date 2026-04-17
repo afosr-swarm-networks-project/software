@@ -1,32 +1,34 @@
-demo_wifi_transmitter.urdf.xacro:
-  - pose: {x: 0.0, y: 0.0, z: 0.5, yaw: 0.0}
+models:
+  demo_wifi_transmitter.urdf.xacro:
+    - pose: {x: 0.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-demo_lora_transmitter.urdf.xacro:
-  - pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
+  demo_lora_transmitter.urdf.xacro:
+    - pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-demo_fhss_transmitter.urdf.xacro:
-  - pose: {x: 10.0, y: 0.0, z: 0.5, yaw: 0.0}
+  demo_fhss_transmitter.urdf.xacro:
+    - pose: {x: 10.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-demo_fm_transmitter.urdf.xacro:
-  - pose: {x: 15.0, y: 0.0, z: 0.5, yaw: 0.0}
+  demo_fm_transmitter.urdf.xacro:
+    - pose: {x: 15.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-demo_bluetooth_transmitter.urdf.xacro:
-  - pose: {x: 20.0, y: 0.0, z: 0.5, yaw: 0.0}
+  demo_bluetooth_transmitter.urdf.xacro:
+    - pose: {x: 20.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-demo_receiver.urdf.xacro:
-  - name: rx_yagi
-    pose: {x: 10.0, y: -20.0, z: 0.5, yaw: 1.5707963}
-    robot_state_publisher:
-      frame_prefix: rx_yagi/
-    static_transform_publisher:
-      parent_frame: world
-      child_frame: rx_yagi/rf_link
-    args:
+  demo_receiver.urdf.xacro:
+    - name: rx_yagi
+      pose: {x: 10.0, y: -20.0, z: 0.5, yaw: 1.5707963}
+      robot_state_publisher:
+        frame_prefix: rx_yagi/
+      static_transform_publisher:
+        parent_frame: world
+        child_frame: rx_yagi/rf_link
+      args:
+        iq_topic: /rf/rx_yagi/iq
+
+pipelines:
+  - rx_yagi_pipeline:
       iq_topic: /rf/rx_yagi/iq
-    pipelines:
-      - rx_yagi_pipeline:
-          iq_topic: /rf/rx_yagi/iq
-          conf_thresh: 0.2
-          stft_win_s: 0.04915
-          fft_size: 2048
-          hop_size: 512
+      conf_thresh: 0.2
+      stft_win_s: 0.04915
+      fft_size: 2048
+      hop_size: 512
