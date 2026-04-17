@@ -1,3 +1,4 @@
+from networkx import nodes
 import yaml
 import xacro
 
@@ -25,113 +26,113 @@ def _load_model(urdf_dir: Path, xacro_file: str, args: dict) -> str:
 
 
 def _spawn_node(label: str, instance: dict, urdf_str: str) -> Node:
-    """Build a ros_gz_sim create Node that spawns one RF model."""
+    """Build a ros_gz_sim create Node that spawns one model."""
     pose = instance.get("pose") or {}
-    arguments = [
-        "-string", urdf_str,
-        "-x", str(pose.get("x", 0.0)),
-        "-y", str(pose.get("y", 0.0)),
-        "-z", str(pose.get("z", 0.0)),
-        "-R", str(pose.get("roll",  0.0)),
-        "-P", str(pose.get("pitch", 0.0)),
-        "-Y", str(pose.get("yaw",   0.0)),
-    ]
-    if "name" in instance:
-        arguments += ["-name", instance["name"]]
-
     return Node(
         package="ros_gz_sim",
         executable="create",
         name=f"spawn_{label}",
         output="screen",
-        arguments=arguments,
-    )
-
-
-def _robot_state_publisher_node(label: str, urdf_str: str, rsp_cfg) -> Node:
-    """Build a robot_state_publisher Node."""
-    extra = rsp_cfg if isinstance(rsp_cfg, dict) else {}
-    return Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        name=f"{label}_state_publisher",
-        output="screen",
-        parameters=[{"robot_description": urdf_str, "use_sim_time": True, **extra}],
-    )
-
-
-def _static_transform_publisher_node(label: str, pose: dict, stp_cfg: dict) -> Node:
-    """Build a tf2_ros static_transform_publisher Node from pose and config."""
-    return Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name=f"{label}_static_tf",
-        output="screen",
         arguments=[
-            "--frame-id",       stp_cfg["parent_frame"],
-            "--child-frame-id", stp_cfg["child_frame"],
-            "--x",     str(pose.get("x",     0.0)),
-            "--y",     str(pose.get("y",     0.0)),
-            "--z",     str(pose.get("z",     0.0)),
-            "--roll",  str(pose.get("roll",  0.0)),
-            "--pitch", str(pose.get("pitch", 0.0)),
-            "--yaw",   str(pose.get("yaw",   0.0)),
+            "-string", urdf_str,
+            "-name",   label,
+            "-x",      str(pose.get("x",     0.0)),
+            "-y",      str(pose.get("y",     0.0)),
+            "-z",      str(pose.get("z",     0.0)),
+            "-R",      str(pose.get("roll",  0.0)),
+            "-P",      str(pose.get("pitch", 0.0)),
+            "-Y",      str(pose.get("yaw",   0.0)),
         ],
     )
 
 
-def _pipeline_group(pipeline_launch: Path, pipeline_name: str, pipeline_cfg: dict) -> GroupAction:
-    """Build a pipeline GroupAction for one named pipeline entry."""
-    return GroupAction([
-        PushRosNamespace(pipeline_name),
-        IncludeLaunchDescription(
+def _create_bridge(bridge_cfgs: list) -> list[Node]:
+    return Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="bridge",
+        output="screen",
+        parameters=[{"config": yaml.dump(bridge_cfgs)}],
+    )
+
+def _create_rsp(urdf_str: str, rsp_cfg: dict) -> Node:
+    return Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name="robot_state_publisher",
+        output="screen",
+        parameters=[{"robot_description": urdf_str, "use_sim_time": True, **rsp_cfg}],
+    )
+
+def _create_static_tfs(stp_cfgs: list) -> list[Node]:
+    nodes = []
+    for i, stp in enumerate(stp_cfgs):
+        if "parent_frame" not in stp or "child_frame" not in stp:
+            continue
+        nodes.append(Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name=f"static_tf_{i}",
+            output="screen",
+            arguments=[
+                "--frame-id",       stp["parent_frame"],
+                "--child-frame-id", stp["child_frame"],
+                "--x",     str(stp.get("x",     0.0)),
+                "--y",     str(stp.get("y",     0.0)),
+                "--z",     str(stp.get("z",     0.0)),
+                "--roll",  str(stp.get("roll",  0.0)),
+                "--pitch", str(stp.get("pitch", 0.0)),
+                "--yaw",   str(stp.get("yaw",   0.0)),
+            ],
+        ))
+    return nodes
+
+def _create_pipelines(pipeline_cfgs: list, pipeline_launch: Path) -> list[IncludeLaunchDescription]:
+    includes = []
+    for p in pipeline_cfgs:
+        includes.append(IncludeLaunchDescription(
             PythonLaunchDescriptionSource(str(pipeline_launch)),
             launch_arguments={
-                **{k: str(v) for k, v in pipeline_cfg.items()},
+                **{k: str(v) for k, v in p.items()},
                 "use_sim_time": "true",
             }.items(),
-        ),
-    ])
+        ))
+    return includes
 
-
-def _create_nodes(urdf_dir: Path, pipeline_launch: Path, config: dict) -> list:
-    """Iterate all entries in the config and build the full list of launch actions."""
+def _ros_group(label: str, urdf_str: str, pose: dict, ros_cfg: dict,
+               pipeline_launch: Path) -> GroupAction:
+    """Wrap all ROS integration nodes for one model in a shared namespace."""
     actions = []
 
-    for xacro_file, instances in config.items():
-        if not instances:
-            continue
-        for i, instance in enumerate(instances):
-            instance = instance or {}
-            args = instance.get("args") or {}
-            file_stem = Path(Path(xacro_file).stem).stem  # strip both .urdf.xacro extensions
-            label = instance.get("name") or f"{file_stem}_{i}"
+    if "bridge" in ros_cfg:
+        actions.append(_create_bridge(ros_cfg["bridge"]))
+    if "robot_state_publisher" in ros_cfg:
+        actions.append(_create_rsp(urdf_str, ros_cfg["robot_state_publisher"]))
+    if "static_transform_publisher" in ros_cfg:
+        actions.extend(_create_static_tfs(ros_cfg["static_transform_publisher"]))
+    if "pipeline" in ros_cfg:
+        actions.extend(_create_pipelines(ros_cfg["pipeline"], pipeline_launch))
 
-            urdf_str = _load_model(urdf_dir, xacro_file, args)
+    return GroupAction([PushRosNamespace(label), *actions])
 
-            # Spawn the model
-            actions.append(_spawn_node(label, instance, urdf_str))
 
-            # Optional: robot_state_publisher
-            rsp_cfg = instance.get("robot_state_publisher")
-            if rsp_cfg:
-                actions.append(_robot_state_publisher_node(label, urdf_str, rsp_cfg))
+def _create_nodes(urdf_dir: Path, pipeline_launch: Path, models_cfg: dict) -> list:
+    """Spawn all models and launch their optional ROS integration."""
+    actions = []
 
-            # Optional: static_transform_publisher
-            stp_cfg = instance.get("static_transform_publisher")
-            if stp_cfg:
-                if not isinstance(stp_cfg, dict) or "parent_frame" not in stp_cfg or "child_frame" not in stp_cfg:
-                    print(f"[WARN] {label}: static_transform_publisher requires parent_frame and child_frame — skipping")
-                else:
-                    pose = instance.get("pose") or {}
-                    actions.append(_static_transform_publisher_node(label, pose, stp_cfg))
+    for label, instance in (models_cfg or {}).items():
+        instance = instance or {}
+        model_cfg = instance.get("model") or {}
+        xacro_file = model_cfg.get("file", "")
+        args = model_cfg.get("args") or {}
 
-            # Optional: pipelines
-            for pipeline_item in (instance.get("pipelines") or []):
-                for pipeline_name, pipeline_cfg in pipeline_item.items():
-                    actions.append(
-                        _pipeline_group(pipeline_launch, pipeline_name, pipeline_cfg or {})
-                    )
+        urdf_str = _load_model(urdf_dir, xacro_file, args)
+        actions.append(_spawn_node(label, instance, urdf_str))
+
+        ros_cfg = instance.get("ros")
+        if ros_cfg:
+            pose = instance.get("pose") or {}
+            actions.append(_ros_group(label, urdf_str, pose, ros_cfg, pipeline_launch))
 
     return actions
 
@@ -167,7 +168,7 @@ def _launch_setup(context, *args, **kwargs):
     )
 
     actions = [gz_sim, clock_bridge]
-    actions.extend(_create_nodes(urdf_dir, pipeline_launch, config))
+    actions.extend(_create_nodes(urdf_dir, pipeline_launch, config.get("models")))
     return actions
 
 

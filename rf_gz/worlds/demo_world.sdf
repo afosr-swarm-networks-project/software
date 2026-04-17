@@ -34,10 +34,10 @@
       </link>
     </model>
 
-    <plugin name="rf_gz::RfWorldPlugin" filename="librf_world.so">
+    <!-- <plugin name="rf_gz::RfWorldPlugin" filename="librf_world.so">
       <channel type="free_space"/>
       <awgn_dbm>-100</awgn_dbm>
-    </plugin>
+    </plugin> -->
 
   </world>
 </sdf>

@@ -1,27 +1,182 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rx_yagi">
-  <xacro:arg name="iq_topic" default="/rf/rx/iq"/>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="vehicle_blue">
+  <xacro:arg name="iq_topic" default="/rf/vehicle_blue/iq"/>
 
-  <link name="rf_link">
+  <!-- ── Base link (model origin at ground level) ────────────────────────── -->
+  <link name="base_link"/>
+
+  <joint name="base_link_to_chassis" type="fixed">
+    <parent link="base_link"/>
+    <child  link="chassis"/>
+    <origin xyz="0 0 0.4" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ── Chassis ──────────────────────────────────────────────────────────── -->
+  <link name="chassis">
     <inertial>
-      <mass value="1.0"/>
-      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+      <mass value="1.14395"/>
+      <inertia ixx="0.095329" ixy="0" ixz="0" iyy="0.381317" iyz="0" izz="0.476646"/>
     </inertial>
     <visual>
-      <geometry><box size="0.4 0.4 0.4"/></geometry>
-      <material name="color">
+      <geometry>
+        <box size="2.0 1.0 0.5"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.0 0.0 1.0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="2.0 1.0 0.5"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ── Front left wheel ─────────────────────────────────────────────────── -->
+  <link name="front_left_wheel">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.043333" ixy="0" ixz="0" iyy="0.043333" iyz="0" izz="0.08"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="front_left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="front_left_wheel"/>
+    <origin xyz="0.5 0.6 0.4" rpy="-1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- ── Front right wheel ────────────────────────────────────────────────── -->
+  <link name="front_right_wheel">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.043333" ixy="0" ixz="0" iyy="0.043333" iyz="0" izz="0.08"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="front_right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="front_right_wheel"/>
+    <origin xyz="0.5 -0.6 0.4" rpy="-1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- ── Rear left wheel ──────────────────────────────────────────────────── -->
+  <link name="rear_left_wheel">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.043333" ixy="0" ixz="0" iyy="0.043333" iyz="0" izz="0.08"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="rear_left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="rear_left_wheel"/>
+    <origin xyz="-0.5 0.6 0.4" rpy="-1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- ── Rear right wheel ─────────────────────────────────────────────────── -->
+  <link name="rear_right_wheel">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.043333" ixy="0" ixz="0" iyy="0.043333" iyz="0" izz="0.08"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.4" length="0.2"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="rear_right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="rear_right_wheel"/>
+    <origin xyz="-0.5 -0.6 0.4" rpy="-1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- ── RF receiver link ─────────────────────────────────────────────────── -->
+  <link name="rf_link">
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.2 0.2 0.1"/>
+      </geometry>
+      <material name="rx_color">
         <color rgba="1.0 0.4 0.2 1.0"/>
       </material>
     </visual>
     <collision>
-      <geometry><box size="0.4 0.4 0.4"/></geometry>
+      <geometry>
+        <box size="0.2 0.2 0.1"/>
+      </geometry>
     </collision>
   </link>
 
+  <joint name="rf_link_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="rf_link"/>
+    <origin xyz="0 0 0.75" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ── Gazebo: mobile robot ─────────────────────────────────────────────── -->
   <gazebo>
-    <static>true</static>
+    <static>false</static>
   </gazebo>
 
+  <!-- ── Gazebo: RF receiver plugin ───────────────────────────────────────── -->
   <gazebo>
     <plugin name="rf_gz::RfModelPlugin" filename="librf_model.so">
       <receiver name="rx_yagi" type="sdf" link="rf_link">
@@ -37,5 +192,31 @@
       </receiver>
     </plugin>
   </gazebo>
+
+  <!-- ── Gazebo: joint state publisher ───────────────────────────────────── -->
+  <gazebo>
+    <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher">
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+      <left_joint>front_left_wheel_joint</left_joint>
+      <left_joint>rear_left_wheel_joint</left_joint>
+      <right_joint>front_right_wheel_joint</right_joint>
+      <right_joint>rear_right_wheel_joint</right_joint>
+      <wheel_separation>1</wheel_separation>
+      <wheel_radius>0.4</wheel_radius>
+      <odom_publish_frequency>1</odom_publish_frequency>
+      <topic>cmd_vel</topic>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="rf_link_joint">
+    <disableFixedJointLumping>true</disableFixedJointLumping>
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
+
 
 </robot>
