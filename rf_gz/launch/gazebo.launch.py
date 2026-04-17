@@ -94,11 +94,11 @@ def _pipeline_group(pipeline_launch: Path, pipeline_name: str, pipeline_cfg: dic
     ])
 
 
-def _create_models(urdf_dir: Path, models_cfg: dict) -> list:
-    """Spawn all models and their optional robot_state_publisher / static_transform_publisher."""
+def _create_nodes(urdf_dir: Path, pipeline_launch: Path, config: dict) -> list:
+    """Iterate all entries in the config and build the full list of launch actions."""
     actions = []
 
-    for xacro_file, instances in models_cfg.items():
+    for xacro_file, instances in config.items():
         if not instances:
             continue
         for i, instance in enumerate(instances):
@@ -126,17 +126,13 @@ def _create_models(urdf_dir: Path, models_cfg: dict) -> list:
                     pose = instance.get("pose") or {}
                     actions.append(_static_transform_publisher_node(label, pose, stp_cfg))
 
-    return actions
+            # Optional: pipelines
+            for pipeline_item in (instance.get("pipelines") or []):
+                for pipeline_name, pipeline_cfg in pipeline_item.items():
+                    actions.append(
+                        _pipeline_group(pipeline_launch, pipeline_name, pipeline_cfg or {})
+                    )
 
-
-def _create_pipelines(pipeline_launch: Path, pipelines_cfg: list) -> list:
-    """Create a GroupAction for each named pipeline entry."""
-    actions = []
-    for pipeline_item in (pipelines_cfg or []):
-        for pipeline_name, pipeline_cfg in pipeline_item.items():
-            actions.append(
-                _pipeline_group(pipeline_launch, pipeline_name, pipeline_cfg or {})
-            )
     return actions
 
 
@@ -171,8 +167,7 @@ def _launch_setup(context, *args, **kwargs):
     )
 
     actions = [gz_sim, clock_bridge]
-    actions.extend(_create_models(urdf_dir, config.get("models") or {}))
-    actions.extend(_create_pipelines(pipeline_launch, config.get("pipelines") or []))
+    actions.extend(_create_nodes(urdf_dir, pipeline_launch, config))
     return actions
 
 
