@@ -182,7 +182,7 @@
   <gazebo>
     <plugin name="rf_gz::RfModelPlugin" filename="librf_model.so">
       <receiver name="rx_yagi" type="sdf" link="${ns}/rf_link">
-        <iq_topic>${ns}/iq</iq_topic>
+        <topic>${ns}/iq</topic>
         <cf_hz>2.4e9</cf_hz>
         <fs_hz>10e6</fs_hz>
         <nf_db>6.0</nf_db>

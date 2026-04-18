@@ -43,7 +43,7 @@ models:
           y: 0.0
           z: 0.0
       pipeline:
-        - iq_topic: rx_vehicle/iq
+        - iq_topic: iq
           conf_thresh: 0.2
           stft_win_s: 0.04915
           fft_size: 2048
