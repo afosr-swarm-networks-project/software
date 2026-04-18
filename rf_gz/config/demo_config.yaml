@@ -1,0 +1,50 @@
+bridge_config: demo_bridges.yaml
+
+models:
+  # ── Transmitters ──────────────────────────────────────────────────────────
+  tx_wifi:
+    model:
+      file: demo_wifi_transmitter.urdf.xacro
+    pose: {x: 0.0, y: 0.0, z: 0.5, yaw: 0.0}
+
+  tx_lora:
+    model:
+      file: demo_lora_transmitter.urdf.xacro
+    pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
+
+  tx_fhss:
+    model:
+      file: demo_fhss_transmitter.urdf.xacro
+    pose: {x: 10.0, y: 0.0, z: 0.5, yaw: 0.0}
+
+  tx_fm:
+    model:
+      file: demo_fm_transmitter.urdf.xacro
+    pose: {x: 15.0, y: 0.0, z: 0.5, yaw: 0.0}
+
+  tx_bluetooth:
+    model:
+      file: demo_bluetooth_transmitter.urdf.xacro
+    pose: {x: 20.0, y: 0.0, z: 0.5, yaw: 0.0}
+
+  # ── Receivers ─────────────────────────────────────────────────────────────
+  rx_vehicle:
+    model:
+      file: demo_receiver.urdf.xacro
+      args:
+        namespace: rx_vehicle
+    pose: {x: 10.0, y: -20.0, z: 0.0, yaw: 1.5707963}
+    ros:
+      robot_state_publisher: {}
+      static_transform_publisher:
+        - parent_frame: rx_vehicle
+          child_frame: rx_vehicle/base_link
+          x: 0.0
+          y: 0.0
+          z: 0.0
+      pipeline:
+        - iq_topic: rx_vehicle/iq
+          conf_thresh: 0.2
+          stft_win_s: 0.04915
+          fft_size: 2048
+          hop_size: 512

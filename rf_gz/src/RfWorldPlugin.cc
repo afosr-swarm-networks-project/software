@@ -9,14 +9,14 @@
 
 #include <gz/math/Pose3.hh>
 #include <gz/plugin/Register.hh>
-#include <gz/sim/components/Model.hh>
+#include <gz/sim/components/Link.hh>
 #include <gz/sim/components/Name.hh>
 #include <gz/sim/EntityComponentManager.hh>
 #include <gz/sim/EventManager.hh>
 #include <gz/sim/Link.hh>
-#include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>
 #include <gz/sim/Types.hh>
+#include "rf_gz/RfComponents.hh"
 #include "rf_gz/RfSignal.hh"
 #include "rf_gz/transmitters/RfTransmitterFactory.hh"
 #include "rf_gz/receivers/RfReceiverFactory.hh"
@@ -25,41 +25,13 @@
 namespace rf_gz
 {
 
-/// Gazebo model/link attachment for an RF device.
-/// Caches the link entity on first WorldPose() call to avoid repeated ECM scans.
-struct Placement
-{
-  std::string model;
-  std::string link;
-  gz::sim::Entity link_entity{gz::sim::kNullEntity};
-
-  /// Resolves and caches the link entity on first call.
-  /// Returns the world pose, or std::nullopt if model/link cannot be found.
-  std::optional<gz::math::Pose3d> WorldPose(
-    const gz::sim::EntityComponentManager& ecm)
-  {
-    if (link_entity == gz::sim::kNullEntity)
-    {
-      gz::sim::Entity model_ent = ecm.EntityByComponents(
-        gz::sim::components::Name(model),
-        gz::sim::components::Model());
-      if (model_ent == gz::sim::kNullEntity)
-        return std::nullopt;
-
-      link_entity = gz::sim::Model(model_ent).LinkByName(ecm, link);
-      if (link_entity == gz::sim::kNullEntity)
-        return std::nullopt;
-    }
-    return gz::sim::Link(link_entity).WorldPose(ecm);
-  }
-};
-
-struct TxEntry { std::string name; Placement placement; std::unique_ptr<RfTransmitterBase> device; };
-struct RxEntry { std::string name; Placement placement; std::unique_ptr<RfReceiverBase>    device; };
+struct TxEntry { std::string name; gz::sim::Entity link_entity{gz::sim::kNullEntity}; std::unique_ptr<RfTransmitterBase> device; };
+struct RxEntry { std::string name; gz::sim::Entity link_entity{gz::sim::kNullEntity}; std::unique_ptr<RfReceiverBase>    device; };
 
 class RfWorldPlugin
   : public gz::sim::System,
     public gz::sim::ISystemConfigure,
+    public gz::sim::ISystemPreUpdate,
     public gz::sim::ISystemPostUpdate
 {
 public:
@@ -78,7 +50,8 @@ public:
       gzmsg << "[rf_gz] Environmental AWGN " << awgn_dbm_ << " dBm\n";
     }
 
-    if (elem->HasElement("channel")) {
+    if (elem->HasElement("channel"))
+    {
       auto ch_elem = elem->GetElement("channel");
       std::string type = ch_elem->Get<std::string>("type");
       channel_ = RfChannelFactory::Instance().Create(type, ch_elem);
@@ -87,11 +60,35 @@ public:
       else
         gzmsg << "[rf_gz] Using channel model '" << type << "'\n";
     }
+  }
 
-    ParseDevices(elem, "transmitter", transmitters_,
-                 RfTransmitterFactory::Instance());
-    ParseDevices(elem, "receiver", receivers_,
-                 RfReceiverFactory::Instance());
+  // ── ISystemPreUpdate ──────────────────────────────────────────────────────
+  void PreUpdate(
+    const gz::sim::UpdateInfo& /*info*/,
+    gz::sim::EntityComponentManager& ecm) override
+  {
+    // RfTransmitterSdf / RfReceiverSdf components are created by RfModelPlugin
+    // when a model first enters the ECM (static world tick 0, dynamic spawn
+    // on arrival tick). EachNew fires exactly once per link per simulation run.
+    ecm.EachNew<gz::sim::components::Link, RfTransmitterSdf>(
+      [&](gz::sim::Entity linkEnt,
+          gz::sim::components::Link*,
+          RfTransmitterSdf* comp) -> bool
+      {
+        RegisterDevice<TxEntry>(linkEnt, comp->Data(), ecm,
+                                transmitters_, RfTransmitterFactory::Instance());
+        return true;
+      });
+
+    ecm.EachNew<gz::sim::components::Link, RfReceiverSdf>(
+      [&](gz::sim::Entity linkEnt,
+          gz::sim::components::Link*,
+          RfReceiverSdf* comp) -> bool
+      {
+        RegisterDevice<RxEntry>(linkEnt, comp->Data(), ecm,
+                                receivers_, RfReceiverFactory::Instance());
+        return true;
+      });
   }
 
   // ── ISystemPostUpdate ─────────────────────────────────────────────────────
@@ -107,13 +104,12 @@ public:
 
     for (auto rx_it = receivers_.begin(); rx_it != receivers_.end(); )
     {
-      auto rx_pose = rx_it->placement.WorldPose(ecm);
+      auto rx_pose = gz::sim::Link(rx_it->link_entity).WorldPose(ecm);
       if (!rx_pose)
       {
         gzwarn << "[rf_gz] Receiver '" << rx_it->name
-               << "': model '" << rx_it->placement.model
-               << "' or link '" << rx_it->placement.link
-               << "' not found — removing\n";
+               << "' (entity " << rx_it->link_entity
+               << ") not found — removing\n";
         rx_it = receivers_.erase(rx_it);
         continue;
       }
@@ -126,13 +122,12 @@ public:
 
       for (auto tx_it = transmitters_.begin(); tx_it != transmitters_.end(); )
       {
-        auto tx_pose = tx_it->placement.WorldPose(ecm);
+        auto tx_pose = gz::sim::Link(tx_it->link_entity).WorldPose(ecm);
         if (!tx_pose)
         {
           gzwarn << "[rf_gz] Transmitter '" << tx_it->name
-                 << "': model '" << tx_it->placement.model
-                 << "' or link '" << tx_it->placement.link
-                 << "' not found — removing\n";
+                 << "' (entity " << tx_it->link_entity
+                 << ") not found — removing\n";
           tx_it = transmitters_.erase(tx_it);
           continue;
         }
@@ -157,57 +152,44 @@ public:
 
 private:
   template<typename Entry, typename Factory>
-  void ParseDevices(
-    sdf::ElementPtr rootElem,
-    const std::string& tag,
+  void RegisterDevice(
+    gz::sim::Entity linkEnt,
+    sdf::ElementPtr devElem,
+    const gz::sim::EntityComponentManager& ecm,
     std::vector<Entry>& list,
     Factory& factory)
   {
-    if (!rootElem->HasElement(tag)) return;
+    const std::string devName = devElem->HasAttribute("name")
+      ? devElem->GetAttribute("name")->GetAsString() : "<unnamed>";
 
-    for (auto devElem = rootElem->GetElement(tag);
-         devElem;
-         devElem = devElem->GetNextElement(tag))
+    if (!devElem->HasAttribute("type"))
     {
-      const std::string devName = devElem->HasAttribute("name")
-        ? devElem->GetAttribute("name")->GetAsString() : "<unnamed>";
-
-      if (!devElem->HasAttribute("type"))
-      {
-        gzerr << "[rf_gz] " << tag << " '" << devName
-              << "': missing required 'type' attribute — skipping\n";
-        continue;
-      }
-
-      const std::string rfType = devElem->GetAttribute("type")->GetAsString();
-      auto dev = factory.Create(rfType, devElem);
-      if (!dev)
-      {
-        gzerr << "[rf_gz] " << tag << " '" << devName
-              << "': failed to create type '" << rfType
-              << "' (unknown type or invalid SDF) — skipping\n";
-        continue;
-      }
-
-      if (!devElem->HasAttribute("model") || !devElem->HasAttribute("link"))
-      {
-        gzerr << "[rf_gz] " << tag << " '" << devName
-              << "': missing required 'model' or 'link' attribute — skipping\n";
-        continue;
-      }
-
-      Entry e;
-      e.name            = devName;
-      e.placement.model = devElem->GetAttribute("model")->GetAsString();
-      e.placement.link  = devElem->GetAttribute("link")->GetAsString();
-      e.device          = std::move(dev);
-
-      gzmsg << "[rf_gz] Registered " << tag << " '" << devName
-            << "' at model='" << e.placement.model
-            << "' link='" << e.placement.link << "'\n";
-
-      list.push_back(std::move(e));
+      gzerr << "[rf_gz] Device '" << devName
+            << "': missing required 'type' attribute — skipping\n";
+      return;
     }
+
+    const std::string rfType = devElem->GetAttribute("type")->GetAsString();
+    auto dev = factory.Create(rfType, devElem);
+    if (!dev)
+    {
+      gzerr << "[rf_gz] Device '" << devName
+            << "': failed to create type '" << rfType
+            << "' (unknown type or invalid SDF) — skipping\n";
+      return;
+    }
+
+    const auto linkName = ecm.ComponentData<gz::sim::components::Name>(linkEnt);
+
+    Entry e;
+    e.name        = devName;
+    e.link_entity = linkEnt;
+    e.device      = std::move(dev);
+
+    gzmsg << "[rf_gz] Registered '" << devName
+          << "' on link '" << linkName.value_or(std::to_string(linkEnt)) << "'\n";
+
+    list.push_back(std::move(e));
   }
 
   /// Fills signal.iq with white Gaussian noise at awgn_dbm_ power.
@@ -235,6 +217,7 @@ GZ_ADD_PLUGIN(
   rf_gz::RfWorldPlugin,
   gz::sim::System,
   rf_gz::RfWorldPlugin::ISystemConfigure,
+  rf_gz::RfWorldPlugin::ISystemPreUpdate,
   rf_gz::RfWorldPlugin::ISystemPostUpdate)
 
 GZ_ADD_PLUGIN_ALIAS(rf_gz::RfWorldPlugin, "rf_gz::RfWorldPlugin")

@@ -11,9 +11,12 @@ find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/IqFrame.msg"
   "msg/StftFrame.msg"
   "msg/RfDetection.msg"
   "msg/RfDetectionArray.msg"
+  "msg/RfScore.msg"
+  "msg/RfScoreArray.msg"
   DEPENDENCIES builtin_interfaces std_msgs
 )
 
