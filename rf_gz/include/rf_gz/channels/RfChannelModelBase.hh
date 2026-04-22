@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gz/sim/Types.hh>
 #include <sdf/Element.hh>
 #include "rf_gz/RfSignal.hh"
 
@@ -13,7 +14,8 @@ public:
   virtual bool LoadSdf(sdf::ElementPtr /*sdf*/) { return true; }
 
   /// Applies channel effects to signal.iq in-place.
-  virtual void Apply(RfSignal& signal, const TxContext& tx, const RxContext& rx) = 0;
+  virtual void Apply(RfSignal& signal, const TxContext& tx, const RxContext& rx,
+                     const gz::sim::UpdateInfo& info) = 0;
 
   virtual ~RfChannelModelBase() = default;
 };

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <random>
@@ -42,15 +43,18 @@ public:
     return true;
   }
 
-  void PreReceive(RfSignal& signal, const RxContext& rx) override
+  void PreReceive(RfSignal& signal, const RxContext& rx,
+                  const gz::sim::UpdateInfo& info) override
   {
     signal.fs_hz = fs_hz;
-    const auto n = static_cast<std::size_t>(std::round(fs_hz * rx.dt));
+    const double dt = std::chrono::duration<double>(info.dt).count();
+    const auto n = static_cast<std::size_t>(std::round(fs_hz * dt));
     signal.iq.assign(n, {0.0, 0.0});
     accumulator_.assign(n, {0.0, 0.0});
   }
 
-  void Receive(RfSignal& signal, const TxContext& tx, const RxContext& rx) override
+  void Receive(RfSignal& signal, const TxContext& tx, const RxContext& rx,
+               const gz::sim::UpdateInfo& info) override
   {
     const uint32_t n     = static_cast<uint32_t>(signal.iq.size());
     const double delta_f = signal.cf_hz - cf_hz;
@@ -63,8 +67,9 @@ public:
     }
     else
     {
+      const double sim_time  = std::chrono::duration<double>(info.simTime).count();
       const double sample_dt = 1.0 / signal.fs_hz;
-      const double t0        = rx.time - static_cast<double>(n) * sample_dt;
+      const double t0        = sim_time - static_cast<double>(n) * sample_dt;
       for (uint32_t i = 0; i < n; ++i)
       {
         const double phase = 2.0 * M_PI * delta_f * (t0 + i * sample_dt);
@@ -76,7 +81,8 @@ public:
     std::fill(signal.iq.begin(), signal.iq.end(), std::complex<double>{0.0, 0.0});
   }
 
-  void PostReceive(RfSignal& signal, const RxContext& rx) override
+  void PostReceive(RfSignal& signal, const RxContext& rx,
+                   const gz::sim::UpdateInfo& info) override
   {
     // ── Environmental AWGN (filled into signal.iq by RfWorldPlugin) ───────
     for (std::size_t i = 0; i < accumulator_.size(); ++i)
@@ -94,7 +100,7 @@ public:
     out.iq    = std::move(accumulator_);
     out.fs_hz = signal.fs_hz;
     out.cf_hz = cf_hz;
-    sink->ConsumeSamples(out, rx);
+    sink->ConsumeSamples(out, rx, info);
   }
 
 private:

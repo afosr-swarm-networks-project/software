@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gz/sim/Types.hh>
 #include <sdf/Element.hh>
 #include "rf_gz/RfSignal.hh"
 
@@ -21,10 +22,11 @@ public:
   /// Called once per Gazebo tick with the final processed baseband signal.
   /// signal.iq holds the combined IQ after downconversion, antenna gain,
   /// and noise. signal.fs_hz and signal.cf_hz reflect the receiver's config.
-  /// rx.time is the simulation time at the END of the current window.
+  /// info.simTime is the simulation time at the END of the current window.
   /// rx.rx_name identifies the receiver (e.g. for default topic naming).
   /// Implementations must be non-blocking (runs on the physics thread).
-  virtual void ConsumeSamples(const RfSignal& signal, const RxContext& rx) = 0;
+  virtual void ConsumeSamples(const RfSignal& signal, const RxContext& rx,
+                              const gz::sim::UpdateInfo& info) = 0;
 
   /// Load sink-specific parameters from SDF.
   /// Receives either the <sink> child element (if present) or the full

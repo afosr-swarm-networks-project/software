@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <gz/sim/Types.hh>
 #include "rf_gz/RfDeviceBase.hh"
 #include "rf_gz/RfSignal.hh"
 #include "rf_gz/sinks/RfSignalSinkFactory.hh"
@@ -25,16 +26,19 @@ public:
     return true;
   }
 
-  /// Allocate signal.iq (using rx.dt and the receiver's own fs_hz),
+  /// Allocate signal.iq (using info.dt and the receiver's own fs_hz),
   /// set signal.fs_hz, and reset the internal accumulator.
-  virtual void PreReceive(RfSignal& signal, const RxContext& rx) = 0;
+  virtual void PreReceive(RfSignal& signal, const RxContext& rx,
+                          const gz::sim::UpdateInfo& info) = 0;
 
   /// Accumulate signal.iq (one transmitter's contribution, after channel),
   /// then zero signal.iq so the buffer is ready for the next transmitter.
-  virtual void Receive(RfSignal& signal, const TxContext& tx, const RxContext& rx) = 0;
+  virtual void Receive(RfSignal& signal, const TxContext& tx, const RxContext& rx,
+                       const gz::sim::UpdateInfo& info) = 0;
 
   /// Finalise: add noise, forward accumulated IQ to the sink.
-  virtual void PostReceive(RfSignal& signal, const RxContext& rx) = 0;
+  virtual void PostReceive(RfSignal& signal, const RxContext& rx,
+                           const gz::sim::UpdateInfo& info) = 0;
 
 protected:
   double cf_hz{0.0};  ///< Receiver centre frequency Hz (for downconversion)

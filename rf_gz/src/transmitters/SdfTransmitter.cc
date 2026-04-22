@@ -45,7 +45,8 @@ public:
     return true;
   }
 
-  void Transmit(RfSignal& signal, const TxContext& tx, const RxContext& rx) override
+  void Transmit(RfSignal& signal, const TxContext& tx, const RxContext& rx,
+                const gz::sim::UpdateInfo& /*info*/) override
   {
     signal.cf_hz = cf_hz;
     source->GenerateBaseband(signal);

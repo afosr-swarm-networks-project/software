@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <string>
@@ -26,7 +27,8 @@ public:
     return true;
   }
 
-  void ConsumeSamples(const RfSignal& signal, const RxContext& rx) override
+  void ConsumeSamples(const RfSignal& signal, const RxContext& rx,
+                      const gz::sim::UpdateInfo& info) override
   {
     if (!publisher_)
     {
@@ -38,10 +40,11 @@ public:
       publisher_ = ros_node_->create_publisher<rf_msgs::msg::IqFrame>(topic, 10);
     }
 
+    const double sim_time = std::chrono::duration<double>(info.simTime).count();
     rf_msgs::msg::IqFrame msg;
-    msg.stamp.sec    = static_cast<int32_t>(rx.time);
+    msg.stamp.sec     = static_cast<int32_t>(sim_time);
     msg.stamp.nanosec = static_cast<uint32_t>(
-      (rx.time - std::floor(rx.time)) * 1e9);
+      (sim_time - std::floor(sim_time)) * 1e9);
     msg.fs_hz = signal.fs_hz;
     msg.fc_hz = signal.cf_hz;
 

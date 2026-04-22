@@ -18,10 +18,8 @@ struct TxContext
 /// Receiver-side deployment context for one tick.
 struct RxContext
 {
-  gz::math::Pose3d rx_pose;    ///< Receiver world pose
-  std::string      rx_name;    ///< Receiver name
-  double           time{0.0};  ///< Sim time at window end (s)
-  double           dt  {0.0};  ///< Sim step duration (s)
+  gz::math::Pose3d rx_pose;  ///< Receiver world pose
+  std::string      rx_name;  ///< Receiver name
 };
 
 /// Pure signal data flowing through the per-tick DSP pipeline.

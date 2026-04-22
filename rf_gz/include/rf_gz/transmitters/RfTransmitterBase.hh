@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gz/sim/Types.hh>
 #include "rf_gz/RfDeviceBase.hh"
 #include "rf_gz/RfSignal.hh"
 #include "rf_gz/sources/RfSignalSourceBase.hh"
@@ -25,7 +26,8 @@ public:
   /// Generate baseband IQ into signal.iq and set signal.cf_hz.
   /// signal.fs_hz and signal.iq.size() are set by PreReceive before this call.
   /// Called once per transmitter per RX tick by RfWorldPlugin.
-  virtual void Transmit(RfSignal& signal, const TxContext& tx, const RxContext& rx) = 0;
+  virtual void Transmit(RfSignal& signal, const TxContext& tx, const RxContext& rx,
+                        const gz::sim::UpdateInfo& info) = 0;
 
 protected:
   double cf_hz{0.0};  ///< Carrier frequency Hz (for downconversion at the receiver)

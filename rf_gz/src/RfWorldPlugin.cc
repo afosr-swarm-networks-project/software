@@ -98,9 +98,7 @@ public:
   {
     if (info.paused) return;
 
-    const double sim_time = std::chrono::duration<double>(info.simTime).count();
-    const double dt       = std::chrono::duration<double>(info.dt).count();
-    if (dt <= 0.0) return;
+    if (std::chrono::duration<double>(info.dt).count() <= 0.0) return;
 
     for (auto rx_it = receivers_.begin(); rx_it != receivers_.end(); )
     {
@@ -114,10 +112,10 @@ public:
         continue;
       }
 
-      const RxContext rx_ctx{*rx_pose, rx_it->name, sim_time, dt};
+      const RxContext rx_ctx{*rx_pose, rx_it->name};
 
       RfSignal signal;
-      rx_it->device->PreReceive(signal, rx_ctx);
+      rx_it->device->PreReceive(signal, rx_ctx, info);
       if (signal.iq.empty()) { ++rx_it; continue; }
 
       for (auto tx_it = transmitters_.begin(); tx_it != transmitters_.end(); )
@@ -133,19 +131,19 @@ public:
         }
 
         const TxContext tx_ctx{*tx_pose, tx_it->name};
-        tx_it->device->Transmit(signal, tx_ctx, rx_ctx);
+        tx_it->device->Transmit(signal, tx_ctx, rx_ctx, info);
 
         if (channel_)
-          channel_->Apply(signal, tx_ctx, rx_ctx);
+          channel_->Apply(signal, tx_ctx, rx_ctx, info);
 
-        rx_it->device->Receive(signal, tx_ctx, rx_ctx);
+        rx_it->device->Receive(signal, tx_ctx, rx_ctx, info);
         ++tx_it;
       }
 
       // ── Fill signal.iq with environmental AWGN before PostReceive ────────
       FillAwgn(signal);
 
-      rx_it->device->PostReceive(signal, rx_ctx);
+      rx_it->device->PostReceive(signal, rx_ctx, info);
       ++rx_it;
     }
   }

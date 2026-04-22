@@ -12,7 +12,8 @@ namespace rf_gz
 class FreeSpaceChannel : public RfChannelModelBase
 {
 public:
-  void Apply(RfSignal& signal, const TxContext& tx, const RxContext& rx) override
+  void Apply(RfSignal& signal, const TxContext& tx, const RxContext& rx,
+             const gz::sim::UpdateInfo& /*info*/) override
   {
     constexpr double c = 2.998e8;
 
