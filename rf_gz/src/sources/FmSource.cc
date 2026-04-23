@@ -31,16 +31,36 @@ public:
     return true;
   }
 
-  void GenerateBaseband(RfSignal& signal) override
+  /// Advance phases analytically by dt seconds; snapshot start-of-tick phases
+  /// for Generate so multiple receivers get identical output.
+  void Advance(double dt) override
   {
-    const uint32_t N = static_cast<uint32_t>(signal.iq.size());
+    gen_audio_phase_ = audio_phase_;
+    gen_fm_phase_    = fm_phase_;
 
-    for (uint32_t i = 0; i < N; ++i)
+    // audio phase advances linearly
+    const double new_audio = audio_phase_ + 2.0 * M_PI * audio_hz_ * dt;
+
+    // FM phase: integral of 2π·deviation·sin(audio_phase_0 + 2π·audio_hz·τ) dτ
+    // = (deviation/audio_hz)·(cos(audio_phase_0) - cos(audio_phase_0 + 2π·audio_hz·dt))
+    fm_phase_ += (deviation_hz_ / audio_hz_) *
+                 (std::cos(audio_phase_) - std::cos(new_audio));
+    audio_phase_ = new_audio;
+  }
+
+  /// Generate N samples from the snapshotted start-of-tick phases.
+  /// Does not mutate member state; idempotent across multiple receivers.
+  void Generate(RfSignal& signal) override
+  {
+    const std::size_t N = signal.iq.size();
+    double ap = gen_audio_phase_;
+    double fp = gen_fm_phase_;
+    for (std::size_t i = 0; i < N; ++i)
     {
-      double m = std::sin(audio_phase_);
-      audio_phase_ += 2.0 * M_PI * audio_hz_ / signal.fs_hz;
-      fm_phase_    += 2.0 * M_PI * (deviation_hz_ * m) / signal.fs_hz;
-      signal.iq[i] = std::complex<double>(std::cos(fm_phase_), std::sin(fm_phase_));
+      const double m = std::sin(ap);
+      ap += 2.0 * M_PI * audio_hz_    / signal.fs_hz;
+      fp += 2.0 * M_PI * deviation_hz_ * m / signal.fs_hz;
+      signal.iq[i] = std::complex<double>(std::cos(fp), std::sin(fp));
     }
   }
 
@@ -48,8 +68,10 @@ private:
   double deviation_hz_{75e3};
   double audio_hz_    {3000.0};
 
-  double fm_phase_   {0.0};
-  double audio_phase_{0.0};
+  double audio_phase_    {0.0};
+  double fm_phase_       {0.0};
+  double gen_audio_phase_{0.0};
+  double gen_fm_phase_   {0.0};
 };
 
 }  // namespace rf_gz

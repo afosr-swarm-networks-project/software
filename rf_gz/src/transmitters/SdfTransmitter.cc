@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <memory>
@@ -45,10 +46,11 @@ public:
     return true;
   }
 
-  SignalFn Transmit(const gz::sim::UpdateInfo& /*info*/) override
+  SignalFn Transmit(const gz::sim::UpdateInfo& info) override
   {
+    source->Advance(std::chrono::duration<double>(info.dt).count());
     return [this](RfSignal& s) {
-      source->GenerateBaseband(s);
+      source->Generate(s);
       Normalize(s.iq);
       s.cf_hz = cf_hz;
     };

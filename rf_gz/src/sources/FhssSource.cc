@@ -38,7 +38,9 @@ public:
     return true;
   }
 
-  void GenerateBaseband(RfSignal& signal) override
+  void Advance(double /*dt*/) override {}
+
+  void Generate(RfSignal& signal) override
   {
     if (hop_samples_ == 0)
     {

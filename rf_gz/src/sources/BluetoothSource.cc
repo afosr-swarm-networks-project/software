@@ -40,7 +40,9 @@ public:
     return true;
   }
 
-  void GenerateBaseband(RfSignal& signal) override
+  void Advance(double /*dt*/) override {}
+
+  void Generate(RfSignal& signal) override
   {
     if (slot_samples_ == 0)
     {
