@@ -2,7 +2,6 @@
 #include <sdf/Element.hh>
 #include "rf_gz/antennas/RfAntennaBase.hh"
 #include "rf_gz/antennas/RfAntennaFactory.hh"
-#include "rf_gz/RfSignal.hh"
 
 namespace rf_gz
 {
@@ -39,26 +38,27 @@ public:
   }
 
 protected:
-  double TxGainDbi(const TxContext& tx, const RxContext& rx) const override
+  double TxGainDbi(const gz::math::Pose3d& tx_pose,
+                   const gz::math::Pose3d& rx_pose) const override
   {
-    const double dx      = rx.rx_pose.Pos().X() - tx.tx_pose.Pos().X();
-    const double dy      = rx.rx_pose.Pos().Y() - tx.tx_pose.Pos().Y();
+    const double dx      = rx_pose.Pos().X() - tx_pose.Pos().X();
+    const double dy      = rx_pose.Pos().Y() - tx_pose.Pos().Y();
     const double bearing = std::atan2(dy, dx);
-    const double pointing = tx.tx_pose.Rot().Yaw();
+    const double pointing = tx_pose.Rot().Yaw();
     const double delta   = std::remainder(bearing - pointing, 2.0 * M_PI);
     return PatternDbi(delta);
   }
 
-  double RxGainDbi(const TxContext& tx, const RxContext& rx) const override
+  double RxGainDbi(const gz::math::Pose3d& tx_pose,
+                   const gz::math::Pose3d& rx_pose) const override
   {
-    const double dx      = tx.tx_pose.Pos().X() - rx.rx_pose.Pos().X();
-    const double dy      = tx.tx_pose.Pos().Y() - rx.rx_pose.Pos().Y();
+    const double dx      = tx_pose.Pos().X() - rx_pose.Pos().X();
+    const double dy      = tx_pose.Pos().Y() - rx_pose.Pos().Y();
     const double bearing = std::atan2(dy, dx);
-    const double pointing = rx.rx_pose.Rot().Yaw();
+    const double pointing = rx_pose.Rot().Yaw();
     const double delta   = std::remainder(bearing - pointing, 2.0 * M_PI);
     return PatternDbi(delta);
   }
-
 
 private:
   double PatternDbi(double delta_theta_rad) const

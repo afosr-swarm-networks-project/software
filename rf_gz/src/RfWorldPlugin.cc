@@ -67,9 +67,6 @@ public:
     const gz::sim::UpdateInfo& /*info*/,
     gz::sim::EntityComponentManager& ecm) override
   {
-    // RfTransmitterSdf / RfReceiverSdf components are created by RfModelPlugin
-    // when a model first enters the ECM (static world tick 0, dynamic spawn
-    // on arrival tick). EachNew fires exactly once per link per simulation run.
     ecm.EachNew<gz::sim::components::Link, RfTransmitterSdf>(
       [&](gz::sim::Entity linkEnt,
           gz::sim::components::Link*,
@@ -97,53 +94,57 @@ public:
     const gz::sim::EntityComponentManager& ecm) override
   {
     if (info.paused) return;
-
     if (std::chrono::duration<double>(info.dt).count() <= 0.0) return;
 
+    // ── Phase 1: build per-TX signal fns (one copy per TX, shared across RXs) ──
+    struct TxData { gz::math::Pose3d pose; SignalFn fn; };
+    std::vector<TxData> txd;
+    txd.reserve(transmitters_.size());
+
+    for (auto tx_it = transmitters_.begin(); tx_it != transmitters_.end(); )
+    {
+      auto tx_pose = gz::sim::Link(tx_it->link_entity).WorldPose(ecm);
+      if (!tx_pose)
+      {
+        gzwarn << "[rf_gz] Transmitter '" << tx_it->name
+               << "' (entity " << tx_it->link_entity << ") not found — removing\n";
+        tx_it = transmitters_.erase(tx_it);
+        continue;
+      }
+      txd.push_back({*tx_pose, tx_it->device->Transmit(info)});
+      ++tx_it;
+    }
+
+    // ── Phase 2 + 3: per-RX wrapping and receive ──────────────────────────
     for (auto rx_it = receivers_.begin(); rx_it != receivers_.end(); )
     {
       auto rx_pose = gz::sim::Link(rx_it->link_entity).WorldPose(ecm);
       if (!rx_pose)
       {
         gzwarn << "[rf_gz] Receiver '" << rx_it->name
-               << "' (entity " << rx_it->link_entity
-               << ") not found — removing\n";
+               << "' (entity " << rx_it->link_entity << ") not found — removing\n";
         rx_it = receivers_.erase(rx_it);
         continue;
       }
 
-      const RxContext rx_ctx{*rx_pose, rx_it->name};
+      std::vector<SignalFn> per_rx;
+      per_rx.reserve(txd.size());
 
-      RfSignal signal;
-      rx_it->device->PreReceive(signal, rx_ctx, info);
-      if (signal.iq.empty()) { ++rx_it; continue; }
-
-      for (auto tx_it = transmitters_.begin(); tx_it != transmitters_.end(); )
+      // transmitters_ and txd are kept in the same order after Phase 1 erases
+      std::size_t idx = 0;
+      for (auto& tx : transmitters_)
       {
-        auto tx_pose = gz::sim::Link(tx_it->link_entity).WorldPose(ecm);
-        if (!tx_pose)
-        {
-          gzwarn << "[rf_gz] Transmitter '" << tx_it->name
-                 << "' (entity " << tx_it->link_entity
-                 << ") not found — removing\n";
-          tx_it = transmitters_.erase(tx_it);
-          continue;
-        }
-
-        const TxContext tx_ctx{*tx_pose, tx_it->name};
-        tx_it->device->Transmit(signal, tx_ctx, rx_ctx, info);
-
+        SignalFn fn = txd[idx].fn;  // copy — each RX gets its own fn instance
+        fn = tx.device->WrapTxGain(std::move(fn), txd[idx].pose, *rx_pose);
         if (channel_)
-          channel_->Apply(signal, tx_ctx, rx_ctx, info);
-
-        rx_it->device->Receive(signal, tx_ctx, rx_ctx, info);
-        ++tx_it;
+          fn = channel_->Wrap(std::move(fn), txd[idx].pose, *rx_pose, info);
+        fn = rx_it->device->WrapRxGain(std::move(fn), txd[idx].pose, *rx_pose);
+        per_rx.push_back(std::move(fn));
+        ++idx;
       }
 
-      // ── Fill signal.iq with environmental AWGN before PostReceive ────────
-      FillAwgn(signal);
-
-      rx_it->device->PostReceive(signal, rx_ctx, info);
+      SignalFn combined = rx_it->device->Combine(std::move(per_rx));
+      rx_it->device->Receive(WrapAwgn(std::move(combined)), info);
       ++rx_it;
     }
   }
@@ -179,6 +180,9 @@ private:
 
     const auto linkName = ecm.ComponentData<gz::sim::components::Name>(linkEnt);
 
+    dev->name = devName;
+    dev->OnNameSet();
+
     Entry e;
     e.name        = devName;
     e.link_entity = linkEnt;
@@ -190,14 +194,16 @@ private:
     list.push_back(std::move(e));
   }
 
-  /// Fills signal.iq with white Gaussian noise at awgn_dbm_ power.
-  /// signal.iq is already sized and zeroed; left as-is if AWGN is off.
-  void FillAwgn(RfSignal& signal)
+  /// Wraps inner to add environmental AWGN after inner completes.
+  SignalFn WrapAwgn(SignalFn inner)
   {
-    if (awgn_dbm_ <= -190.0) return;  // effectively off
-    const double std = std::sqrt(std::pow(10.0, awgn_dbm_ / 10.0) / 2.0);
-    for (auto& s : signal.iq)
-      s = std::complex<double>(gauss_(rng_) * std, gauss_(rng_) * std);
+    return [this, inner = std::move(inner)](RfSignal& s) mutable {
+      inner(s);
+      if (awgn_dbm_ <= -190.0) return;
+      const double std = std::sqrt(std::pow(10.0, awgn_dbm_ / 10.0) / 2.0);
+      for (auto& x : s.iq)
+        x += std::complex<double>(gauss_(rng_) * std, gauss_(rng_) * std);
+    };
   }
 
   std::vector<TxEntry>                transmitters_;

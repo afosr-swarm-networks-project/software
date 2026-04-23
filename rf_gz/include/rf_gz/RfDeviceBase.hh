@@ -12,6 +12,7 @@ namespace rf_gz
 class RfDeviceBase
 {
 public:
+  std::string name;  ///< Set by RfWorldPlugin immediately after registration
 
   /// Parses name and type from element attributes and instantiates the antenna.
   /// Returns false if a required field is missing; factory returns nullptr.
@@ -22,6 +23,10 @@ public:
     if (!antenna) return false;
     return true;
   }
+
+  /// Called by RfWorldPlugin after setting name.  Subclasses may override to
+  /// forward the name to owned objects (e.g. sink).
+  virtual void OnNameSet() {}
 
   virtual ~RfDeviceBase() = default;
 

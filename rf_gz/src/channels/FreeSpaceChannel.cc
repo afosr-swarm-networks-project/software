@@ -1,6 +1,5 @@
 #include <cmath>
 #include <complex>
-#include <vector>
 
 #include "rf_gz/channels/RfChannelFactory.hh"
 
@@ -8,25 +7,28 @@ namespace rf_gz
 {
 
 /// Free-space path loss (Friis).
-/// Amplitude scale = c / (4π · d · cf_hz)
+/// Distance is captured at wrap time; FSPL scale uses signal.cf_hz (TX CF).
 class FreeSpaceChannel : public RfChannelModelBase
 {
 public:
-  void Apply(RfSignal& signal, const TxContext& tx, const RxContext& rx,
-             const gz::sim::UpdateInfo& /*info*/) override
+  SignalFn Wrap(SignalFn inner,
+                const gz::math::Pose3d& tx_pose,
+                const gz::math::Pose3d& rx_pose,
+                const gz::sim::UpdateInfo&) override
   {
-    constexpr double c = 2.998e8;
-
-    const double dx = rx.rx_pose.Pos().X() - tx.tx_pose.Pos().X();
-    const double dy = rx.rx_pose.Pos().Y() - tx.tx_pose.Pos().Y();
-    const double dz = rx.rx_pose.Pos().Z() - tx.tx_pose.Pos().Z();
+    const double dx = rx_pose.Pos().X() - tx_pose.Pos().X();
+    const double dy = rx_pose.Pos().Y() - tx_pose.Pos().Y();
+    const double dz = rx_pose.Pos().Z() - tx_pose.Pos().Z();
     double d = std::sqrt(dx*dx + dy*dy + dz*dz);
     if (d < 1e-3) d = 1e-3;
 
-    const double cf    = signal.cf_hz > 0.0 ? signal.cf_hz : 1.0;
-    const double scale = c / (4.0 * M_PI * d * cf);
-    for (auto& s : signal.iq)
-      s *= scale;
+    return [inner = std::move(inner), d](RfSignal& s) mutable {
+      inner(s);
+      constexpr double c = 2.998e8;
+      const double cf    = s.cf_hz > 0.0 ? s.cf_hz : 1.0;
+      const double scale = c / (4.0 * M_PI * d * cf);
+      for (auto& sample : s.iq) sample *= scale;
+    };
   }
 };
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gz/sim/Types.hh>
+#include <string_view>
 #include <sdf/Element.hh>
 #include "rf_gz/RfSignal.hh"
 
@@ -11,7 +11,7 @@ namespace rf_gz
 ///
 /// A signal sink receives the fully-processed combined baseband IQ from a
 /// receiver (after downconversion, antenna gain, and noise addition) and
-/// decides what to do with it — e.g. publish to gz transport.
+/// decides what to do with it — e.g. publish to a ROS 2 topic.
 ///
 /// RfReceiverBase owns one instance and calls ConsumeSamples() each tick.
 class RfSignalSinkBase
@@ -20,17 +20,16 @@ public:
   virtual ~RfSignalSinkBase() = default;
 
   /// Called once per Gazebo tick with the final processed baseband signal.
-  /// signal.iq holds the combined IQ after downconversion, antenna gain,
-  /// and noise. signal.fs_hz and signal.cf_hz reflect the receiver's config.
-  /// info.simTime is the simulation time at the END of the current window.
-  /// rx.rx_name identifies the receiver (e.g. for default topic naming).
+  /// signal.cf_hz holds the RX centre frequency.
+  /// signal.time is the simulation time at the end of the current window.
   /// Implementations must be non-blocking (runs on the physics thread).
-  virtual void ConsumeSamples(const RfSignal& signal, const RxContext& rx,
-                              const gz::sim::UpdateInfo& info) = 0;
+  virtual void ConsumeSamples(const RfSignal& signal) = 0;
+
+  /// Called by RfReceiverBase::OnNameSet to forward the receiver name.
+  /// Sinks may use it for default topic naming or logging.
+  virtual void SetName(std::string_view /*name*/) {}
 
   /// Load sink-specific parameters from SDF.
-  /// Receives either the <sink> child element (if present) or the full
-  /// <receiver> element as a fallback.
   /// Returns false if a required field is missing; factory returns nullptr.
   virtual bool LoadSdf(sdf::ElementPtr sdf) = 0;
 };

@@ -1,7 +1,6 @@
 #include <sdf/Element.hh>
 #include "rf_gz/antennas/RfAntennaBase.hh"
 #include "rf_gz/antennas/RfAntennaFactory.hh"
-#include "rf_gz/RfSignal.hh"
 
 namespace rf_gz
 {
@@ -13,7 +12,6 @@ namespace rf_gz
 class OmniAntenna : public RfAntennaBase
 {
 public:
-
   bool LoadSdf(sdf::ElementPtr sdf) override
   {
     if (sdf && sdf->HasElement("gain_dbi"))
@@ -22,12 +20,14 @@ public:
   }
 
 protected:
-  double TxGainDbi(const TxContext&, const RxContext&) const override
+  double TxGainDbi(const gz::math::Pose3d&,
+                   const gz::math::Pose3d&) const override
   {
     return gain_dbi_;
   }
 
-  double RxGainDbi(const TxContext&, const RxContext&) const override
+  double RxGainDbi(const gz::math::Pose3d&,
+                   const gz::math::Pose3d&) const override
   {
     return gain_dbi_;
   }
