@@ -5,6 +5,7 @@
 
 #include <sdf/Element.hh>
 
+#include "rf_gz/BandlimitedNoise.hh"
 #include "rf_gz/RfSignal.hh"
 #include "rf_gz/sources/RfSignalSourceFactory.hh"
 
@@ -23,7 +24,7 @@ namespace rf_gz
 ///
 /// SDF parameters:
 ///   <bandwidth_hz>    One-sided baseband bandwidth Hz  (default 1e6)
-///   <burst_time_s>    Burst duration s                 (default 0.001)
+///   <burst_time_s>    Burst duration s                 (default 0.01)
 ///   <downtime_min_s>  Min silence gap s                (default 0.0001)
 ///   <downtime_max_s>  Max silence gap s                (default 0.001)
 class WifiSource : public RfSignalSourceBase
@@ -131,32 +132,10 @@ public:
 private:
   std::vector<std::complex<double>> GenerateBurst(double fs_hz)
   {
-    const uint32_t M = kFilterTaps_;
     const uint32_t L = std::max(
-      static_cast<uint32_t>(std::round(burst_time_s_ * fs_hz)), M + 1u);
-
-    std::vector<std::complex<double>> noise(L);
-    for (auto& s : noise)
-      s = std::complex<double>(gauss_(rng_), gauss_(rng_)) * M_SQRT1_2;
-
-    const double fc = std::min(bandwidth_hz_ / fs_hz, 0.499);
-    std::vector<double> h(M + 1);
-    for (uint32_t n = 0; n <= M; ++n)
-    {
-      double x    = static_cast<double>(n) - M * 0.5;
-      double sinc = (std::abs(x) < 1e-12)
-                    ? 2.0 * fc
-                    : std::sin(2.0 * M_PI * fc * x) / (M_PI * x);
-      double win  = 0.5 * (1.0 - std::cos(2.0 * M_PI * n / M));
-      h[n] = sinc * win;
-    }
-
-    std::vector<std::complex<double>> burst(L, {0.0, 0.0});
-    for (uint32_t i = 0; i < L; ++i)
-      for (uint32_t j = 0; j <= M; ++j)
-        burst[i] += h[j] * noise[(i - j + L) % L];
-
-    return burst;
+      static_cast<uint32_t>(std::round(burst_time_s_ * fs_hz)), 65u);
+    const double fc = bandwidth_hz_ / fs_hz;
+    return bandlimited_complex_noise(L, fc, rng_, gauss_, /*circular=*/true);
   }
 
   double NextSilenceTime()
@@ -170,8 +149,6 @@ private:
   double burst_time_s_  {0.01};
   double downtime_min_s_{0.0001};
   double downtime_max_s_{0.001};
-
-  static constexpr uint32_t kFilterTaps_{64};
 
   // Burst array (generated lazily at first fs_hz seen)
   std::vector<std::complex<double>> burst_;

@@ -7,10 +7,10 @@ models:
       file: demo_wifi_transmitter.urdf.xacro
     pose: {x: 0.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-  tx_lora:
-    model:
-      file: demo_lora_transmitter.urdf.xacro
-    pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
+  # tx_lora:
+  #   model:
+  #     file: demo_lora_transmitter.urdf.xacro
+  #   pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
 
   # tx_fhss:
   #   model:
