@@ -37,7 +37,9 @@ public:
     return true;
   }
 
-  void GenerateBaseband(RfSignal& signal) override
+  void Advance(double /*dt*/) override {}
+
+  void Generate(RfSignal& signal) override
   {
     if (N_sym_ == 0)
     {

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <memory>
@@ -16,7 +17,7 @@ namespace rf_gz
 ///
 /// Delegates baseband generation to a RfSignalSourceBase selected by the
 /// required <source type="..."> child element.  Output is normalised to
-/// power_dbm and antenna TX gain is applied before returning.
+/// power_dbm and TX antenna gain is applied by WrapTxGain in the world plugin.
 ///
 /// SDF parameters (on <transmitter type="sdf">):
 ///   <cf_hz>       Carrier frequency Hz        (parsed by RfTransmitterBase)
@@ -24,7 +25,7 @@ namespace rf_gz
 ///   <source type="wifi|lora|fhss|fm|bluetooth">
 ///     ...source-specific parameters...
 ///   </source>
-///   <antenna type="omni|yagi" model="..." link="...">
+///   <antenna type="omni|yagi" ...>
 ///     ...antenna-specific parameters...
 ///   </antenna>
 class SdfTransmitter : public RfTransmitterBase
@@ -45,16 +46,17 @@ public:
     return true;
   }
 
-  void Transmit(RfSignal& signal, const TxContext& tx, const RxContext& rx) override
+  SignalFn Transmit(const gz::sim::UpdateInfo& info) override
   {
-    signal.cf_hz = cf_hz;
-    source->GenerateBaseband(signal);
-    Normalize(signal.iq);
-    antenna->ApplyTxGain(signal, tx, rx);
+    source->Advance(std::chrono::duration<double>(info.dt).count());
+    return [this](RfSignal& s) {
+      source->Generate(s);
+      Normalize(s.iq);
+      s.cf_hz = cf_hz;
+    };
   }
 
 private:
-
   void Normalize(std::vector<std::complex<double>>& iq) const
   {
     if (iq.empty()) return;
@@ -67,8 +69,6 @@ private:
     const double power_amp = std::pow(10.0, power_dbm / 20.0);
     const double scale     = power_amp / rms;
     for (auto& s : iq) s *= scale;
-
-    
   }
 };
 

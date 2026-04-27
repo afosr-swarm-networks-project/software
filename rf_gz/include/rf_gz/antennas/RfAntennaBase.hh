@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cmath>
-#include <complex>
-#include <vector>
+#include <gz/math/Pose3.hh>
 #include <sdf/Element.hh>
 #include "rf_gz/RfSignal.hh"
 
@@ -19,21 +18,27 @@ public:
   /// Returns false if a required field is missing; factory returns nullptr.
   virtual bool LoadSdf(sdf::ElementPtr sdf) = 0;
 
-  void ApplyTxGain(RfSignal& signal, const TxContext& tx, const RxContext& rx) const
+  void ApplyTxGain(RfSignal& signal,
+                   const gz::math::Pose3d& tx_pose,
+                   const gz::math::Pose3d& rx_pose) const
   {
-    const double amp = std::pow(10.0, TxGainDbi(tx, rx) / 20.0);
+    const double amp = std::pow(10.0, TxGainDbi(tx_pose, rx_pose) / 20.0);
     for (auto& s : signal.iq) s *= amp;
   }
 
-  void ApplyRxGain(RfSignal& signal, const TxContext& tx, const RxContext& rx) const
+  void ApplyRxGain(RfSignal& signal,
+                   const gz::math::Pose3d& tx_pose,
+                   const gz::math::Pose3d& rx_pose) const
   {
-    const double amp = std::pow(10.0, RxGainDbi(tx, rx) / 20.0);
+    const double amp = std::pow(10.0, RxGainDbi(tx_pose, rx_pose) / 20.0);
     for (auto& s : signal.iq) s *= amp;
   }
 
 protected:
-  virtual double TxGainDbi(const TxContext& tx, const RxContext& rx) const = 0;
-  virtual double RxGainDbi(const TxContext& tx, const RxContext& rx) const = 0;
+  virtual double TxGainDbi(const gz::math::Pose3d& tx_pose,
+                            const gz::math::Pose3d& rx_pose) const = 0;
+  virtual double RxGainDbi(const gz::math::Pose3d& tx_pose,
+                            const gz::math::Pose3d& rx_pose) const = 0;
 };
 
 }  // namespace rf_gz

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <gz/math/Pose3.hh>
+#include <gz/sim/Types.hh>
 #include "rf_gz/RfDeviceBase.hh"
 #include "rf_gz/RfSignal.hh"
 #include "rf_gz/sources/RfSignalSourceBase.hh"
@@ -22,13 +24,22 @@ public:
     return true;
   }
 
-  /// Generate baseband IQ into signal.iq and set signal.cf_hz.
-  /// signal.fs_hz and signal.iq.size() are set by PreReceive before this call.
-  /// Called once per transmitter per RX tick by RfWorldPlugin.
-  virtual void Transmit(RfSignal& signal, const TxContext& tx, const RxContext& rx) = 0;
+  /// Returns a SignalFn that generates one frame of baseband IQ and sets signal.cf_hz.
+  virtual SignalFn Transmit(const gz::sim::UpdateInfo& info) = 0;
+
+  /// Wraps inner with TX antenna gain applied after inner runs.
+  SignalFn WrapTxGain(SignalFn inner,
+                      const gz::math::Pose3d& tx_pose,
+                      const gz::math::Pose3d& rx_pose)
+  {
+    return [inner = std::move(inner), this, tx_pose, rx_pose](RfSignal& s) mutable {
+      inner(s);
+      antenna->ApplyTxGain(s, tx_pose, rx_pose);
+    };
+  }
 
 protected:
-  double cf_hz{0.0};  ///< Carrier frequency Hz (for downconversion at the receiver)
+  double cf_hz{0.0};
   std::shared_ptr<RfSignalSourceBase> source;
 };
 

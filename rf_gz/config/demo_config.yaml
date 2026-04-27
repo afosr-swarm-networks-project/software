@@ -7,25 +7,25 @@ models:
       file: demo_wifi_transmitter.urdf.xacro
     pose: {x: 0.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-  tx_lora:
-    model:
-      file: demo_lora_transmitter.urdf.xacro
-    pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
+  # tx_lora:
+  #   model:
+  #     file: demo_lora_transmitter.urdf.xacro
+  #   pose: {x: 5.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-  tx_fhss:
-    model:
-      file: demo_fhss_transmitter.urdf.xacro
-    pose: {x: 10.0, y: 0.0, z: 0.5, yaw: 0.0}
+  # tx_fhss:
+  #   model:
+  #     file: demo_fhss_transmitter.urdf.xacro
+  #   pose: {x: 10.0, y: 0.0, z: 0.5, yaw: 0.0}
 
   tx_fm:
     model:
       file: demo_fm_transmitter.urdf.xacro
     pose: {x: 15.0, y: 0.0, z: 0.5, yaw: 0.0}
 
-  tx_bluetooth:
-    model:
-      file: demo_bluetooth_transmitter.urdf.xacro
-    pose: {x: 20.0, y: 0.0, z: 0.5, yaw: 0.0}
+  # tx_bluetooth:
+  #   model:
+  #     file: demo_bluetooth_transmitter.urdf.xacro
+  #   pose: {x: 20.0, y: 0.0, z: 0.5, yaw: 0.0}
 
   # ── Receivers ─────────────────────────────────────────────────────────────
   rx_vehicle:

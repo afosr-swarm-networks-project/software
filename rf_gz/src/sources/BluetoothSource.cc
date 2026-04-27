@@ -5,6 +5,7 @@
 
 #include <sdf/Element.hh>
 
+#include "rf_gz/BandlimitedNoise.hh"
 #include "rf_gz/RfSignal.hh"
 #include "rf_gz/sources/RfSignalSourceFactory.hh"
 
@@ -40,7 +41,9 @@ public:
     return true;
   }
 
-  void GenerateBaseband(RfSignal& signal) override
+  void Advance(double /*dt*/) override {}
+
+  void Generate(RfSignal& signal) override
   {
     if (slot_samples_ == 0)
     {
@@ -64,37 +67,6 @@ public:
   }
 
 private:
-  static constexpr uint32_t kFilterTaps_{64};
-
-  std::vector<std::complex<double>>
-  BandlimitedNoise(uint32_t n, double f_high_hz, double fs_hz)
-  {
-    const double   fc = std::min(f_high_hz / fs_hz, 0.499);
-    const uint32_t M  = kFilterTaps_;
-
-    std::vector<double> h(M + 1);
-    for (uint32_t k = 0; k <= M; ++k)
-    {
-      double x    = static_cast<double>(k) - M * 0.5;
-      double sinc = (std::abs(x) < 1e-12)
-                    ? 2.0 * fc
-                    : std::sin(2.0 * M_PI * fc * x) / (M_PI * x);
-      double win  = 0.5 * (1.0 - std::cos(2.0 * M_PI * k / M));
-      h[k] = sinc * win;
-    }
-
-    std::vector<std::complex<double>> noise(n + M);
-    for (auto& s : noise)
-      s = std::complex<double>(gauss_(rng_), gauss_(rng_)) * M_SQRT1_2;
-
-    std::vector<std::complex<double>> out(n, {0.0, 0.0});
-    for (uint32_t i = 0; i < n; ++i)
-      for (uint32_t j = 0; j <= M; ++j)
-        out[i] += h[j] * noise[M + i - j];
-
-    return out;
-  }
-
   void GenerateNextSlot(double fs_hz)
   {
     slot_pos_    = 0;
@@ -124,7 +96,8 @@ private:
 
     const double hop_offset = std::uniform_real_distribution<double>{
                                 -hop_span_hz_ / 2.0, hop_span_hz_ / 2.0}(rng_);
-    burst_buffer_ = BandlimitedNoise(burst_n, hop_bw_hz_ / 2.0, fs_hz);
+    burst_buffer_ = bandlimited_complex_noise(
+      burst_n, hop_bw_hz_ / 2.0 / fs_hz, rng_, gauss_);
 
     for (uint32_t i = 0; i < burst_n; ++i)
     {

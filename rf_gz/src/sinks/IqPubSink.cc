@@ -26,22 +26,27 @@ public:
     return true;
   }
 
-  void ConsumeSamples(const RfSignal& signal, const RxContext& rx) override
+  void SetName(std::string_view name) override
+  {
+    rx_name_ = std::string(name);
+  }
+
+  void ConsumeSamples(const RfSignal& signal) override
   {
     if (!publisher_)
     {
       const std::string topic =
-        topic_.empty() ? "/rf/" + rx.rx_name + "/iq" : topic_;
+        topic_.empty() ? "/rf/" + rx_name_ + "/iq" : topic_;
       if (!rclcpp::ok())
         rclcpp::init(0, nullptr);
-      ros_node_ = std::make_shared<rclcpp::Node>("iq_pub_sink_" + rx.rx_name);
+      ros_node_ = std::make_shared<rclcpp::Node>("iq_pub_sink_" + rx_name_);
       publisher_ = ros_node_->create_publisher<rf_msgs::msg::IqFrame>(topic, 10);
     }
 
     rf_msgs::msg::IqFrame msg;
-    msg.stamp.sec    = static_cast<int32_t>(rx.time);
+    msg.stamp.sec     = static_cast<int32_t>(signal.time);
     msg.stamp.nanosec = static_cast<uint32_t>(
-      (rx.time - std::floor(rx.time)) * 1e9);
+      (signal.time - std::floor(signal.time)) * 1e9);
     msg.fs_hz = signal.fs_hz;
     msg.fc_hz = signal.cf_hz;
 
@@ -57,6 +62,7 @@ public:
 
 private:
   std::string topic_;
+  std::string rx_name_;
 
   rclcpp::Node::SharedPtr                                    ros_node_;
   rclcpp::Publisher<rf_msgs::msg::IqFrame>::SharedPtr        publisher_;
