@@ -1,0 +1,22 @@
+usrp_driver_node:
+  ros__parameters:
+    device_args: "type=b200"
+    freq_hz: 2.402e9
+    rate_hz: 1.0e6
+    gain_db: 10.0
+    channel: 0
+    samples_per_chunk: 1024
+
+stft_node:
+  ros__parameters:
+    fft_size: 2048
+    win_size: 2048
+    hop_size: 512
+
+yolo_detector_node:
+  ros__parameters:
+    conf_thresh: 0.2
+
+scoreboard_node:
+  ros__parameters:
+    aggregation: "max"
