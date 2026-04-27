@@ -10,7 +10,11 @@ setup(
         ("share/ament_index/resource_index/packages",
          [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
-        (f"share/{package_name}/launch", ["launch/pipeline.launch.py"]),
+        (f"share/{package_name}/launch", [
+            "launch/pipeline.launch.py",
+            "launch/client.launch.py",
+        ]),
+        (f"share/{package_name}/config", ["config/client.yaml"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
