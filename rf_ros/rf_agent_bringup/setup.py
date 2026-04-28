@@ -11,7 +11,6 @@ setup(
          [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
         (f"share/{package_name}/launch", [
-            "launch/pipeline.launch.py",
             "launch/client.launch.py",
         ]),
         (f"share/{package_name}/config", ["config/client.yaml"]),

@@ -26,14 +26,14 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("stft_nfft",      default_value="2048"),
         DeclareLaunchArgument("stft_hop",       default_value="512"),
         DeclareLaunchArgument("model_path",     default_value=str(
-            get_package_share_path("rf_dectectors") / "resource" / "best.pt"
+            get_package_share_path("rf_pipeline") / "resource" / "best.pt"
         )),
         DeclareLaunchArgument("conf_thresh",    default_value="0.2"),
         DeclareLaunchArgument("scoreboard_agg", default_value="max"),
 
         Node(
-            package="rf_signal_proc",
-            executable="stft_node.py",
+            package="rf_pipeline",
+            executable="stft_node",
             name="stft_node",
             output="screen",
             parameters=[{
@@ -45,7 +45,7 @@ def generate_launch_description() -> LaunchDescription:
             remappings=[("iq", iq_topic)],
         ),
         Node(
-            package="rf_dectectors",
+            package="rf_pipeline",
             executable="yolo_detector",
             name="yolo_detector_node",
             output="screen",
@@ -56,7 +56,7 @@ def generate_launch_description() -> LaunchDescription:
             }, config_file],
         ),
         Node(
-            package="rf_cartography",
+            package="rf_pipeline",
             executable="scoreboard",
             name="scoreboard_node",
             output="screen",

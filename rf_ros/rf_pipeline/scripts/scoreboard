@@ -1,0 +1,3 @@
+#!/usr/bin/env python3
+from rf_pipeline.scoreboard import main
+main()
