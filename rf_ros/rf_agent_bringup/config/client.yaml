@@ -8,9 +8,9 @@ usrp_driver_node:
 
 stft_node:
   ros__parameters:
-    fft_size: 2048
+    nfft:     2048
     win_size: 2048
-    hop_size: 512
+    hop:      512
 
 yolo_detector_node:
   ros__parameters:

@@ -6,44 +6,43 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:
-    use_sim_time = LaunchConfiguration("use_sim_time")
-    iq_topic = LaunchConfiguration("iq_topic")
-    stft_win_s = LaunchConfiguration("stft_win_s")
-    fft_size = LaunchConfiguration("fft_size")
-    hop_size = LaunchConfiguration("hop_size")
-    model_path = LaunchConfiguration("model_path")
-    conf_thresh = LaunchConfiguration("conf_thresh")
-    scores_topic = LaunchConfiguration("scores_topic")
+    config_file    = LaunchConfiguration("config_file")
+    use_sim_time   = LaunchConfiguration("use_sim_time")
+    iq_topic       = LaunchConfiguration("iq_topic")
+    stft_win_size  = LaunchConfiguration("stft_win_size")
+    stft_nfft      = LaunchConfiguration("stft_nfft")
+    stft_hop       = LaunchConfiguration("stft_hop")
+    model_path     = LaunchConfiguration("model_path")
+    conf_thresh    = LaunchConfiguration("conf_thresh")
+    scores_topic   = LaunchConfiguration("scores_topic")
     scoreboard_agg = LaunchConfiguration("scoreboard_agg")
 
-    
-
     return LaunchDescription([
-        DeclareLaunchArgument("use_sim_time", default_value="false"),
-        DeclareLaunchArgument("iq_topic", default_value="iq"),
-        DeclareLaunchArgument("scores_topic", default_value="scores"),
-        DeclareLaunchArgument("stft_win_s", default_value="0.04915"),
-        DeclareLaunchArgument("fft_size", default_value="2048"),
-        DeclareLaunchArgument("hop_size", default_value="512"),
-        DeclareLaunchArgument("model_path", default_value=str(
+        DeclareLaunchArgument("config_file",    default_value=""),
+        DeclareLaunchArgument("use_sim_time",   default_value="false"),
+        DeclareLaunchArgument("iq_topic",       default_value="iq"),
+        DeclareLaunchArgument("scores_topic",   default_value="scores"),
+        DeclareLaunchArgument("stft_win_size",  default_value="2048"),
+        DeclareLaunchArgument("stft_nfft",      default_value="2048"),
+        DeclareLaunchArgument("stft_hop",       default_value="512"),
+        DeclareLaunchArgument("model_path",     default_value=str(
             get_package_share_path("rf_dectectors") / "resource" / "best.pt"
         )),
-        DeclareLaunchArgument("conf_thresh", default_value="0.2"),
+        DeclareLaunchArgument("conf_thresh",    default_value="0.2"),
         DeclareLaunchArgument("scoreboard_agg", default_value="max"),
+
         Node(
             package="rf_signal_proc",
             executable="stft_node.py",
             name="stft_node",
             output="screen",
             parameters=[{
-                "fft_size": fft_size,
-                "hop_size": hop_size,
-                "stft_win_s": stft_win_s,
+                "nfft":         stft_nfft,
+                "hop":          stft_hop,
+                "win_size":     stft_win_size,
                 "use_sim_time": use_sim_time,
-            }],
-            remappings=[
-                ("iq", iq_topic),
-            ]
+            }, config_file],
+            remappings=[("iq", iq_topic)],
         ),
         Node(
             package="rf_dectectors",
@@ -51,10 +50,10 @@ def generate_launch_description() -> LaunchDescription:
             name="yolo_detector_node",
             output="screen",
             parameters=[{
-                "model_path": model_path,
-                "conf_thresh": conf_thresh,
+                "model_path":   model_path,
+                "conf_thresh":  conf_thresh,
                 "use_sim_time": use_sim_time,
-            }],
+            }, config_file],
         ),
         Node(
             package="rf_cartography",
@@ -62,11 +61,9 @@ def generate_launch_description() -> LaunchDescription:
             name="scoreboard_node",
             output="screen",
             parameters=[{
-                "aggregation": scoreboard_agg,
+                "aggregation":  scoreboard_agg,
                 "use_sim_time": use_sim_time,
-            }],
-            remappings=[
-                ("scores", scores_topic),
-            ]
+            }, config_file],
+            remappings=[("scores", scores_topic)],
         ),
     ])

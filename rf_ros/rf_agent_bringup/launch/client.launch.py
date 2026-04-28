@@ -17,7 +17,8 @@ def generate_launch_description() -> LaunchDescription:
     pipeline_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(pkg / "launch" / "pipeline.launch.py")),
         launch_arguments={
-            "iq_topic":    iq_topic,
+            "config_file":  config_file,
+            "iq_topic":     iq_topic,
             "scores_topic": scores_topic,
         }.items(),
     )
