@@ -33,7 +33,7 @@ def generate_launch_description() -> LaunchDescription:
 
         Node(
             package="uhd_usrp",
-            executable="usrp_driver_node.py",
+            executable="usrp_driver_node",
             name="usrp_driver_node",
             output="screen",
             parameters=[config_file],
