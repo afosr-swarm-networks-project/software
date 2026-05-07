@@ -153,15 +153,4 @@ class YoloDetectorNode(Node):
 
 
 def _default_model_path() -> Path:
-    return Path(get_package_share_directory("rf_dectectors")) / "resource" / "best.pt"
-
-
-def main(args=None) -> None:
-    rclpy.init(args=args)
-    node = YoloDetectorNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
+    return Path(get_package_share_directory("rf_pipeline")) / "resource" / "best.pt"

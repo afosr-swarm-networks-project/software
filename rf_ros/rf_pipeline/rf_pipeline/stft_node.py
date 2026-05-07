@@ -151,18 +151,3 @@ class StftNode(Node):
         f_hz = np.fft.fftshift(f_hz)
         sxx = np.fft.fftshift(sxx, axes=0)
         return sxx, f_hz, t_s
-
-
-def main(args: list[str] | None = None) -> None:
-    rclpy.init(args=args)
-    node = StftNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-
-
-if __name__ == "__main__":
-    main()
