@@ -21,9 +21,30 @@ class StftNode(Node):
         self._cf_hz = None
 
         self._buffer_size = max(int(self.declare_parameter("buffer_size", 100000).value), 2)
-        self._fft_size = max(int(self.declare_parameter("fft_size", 2048).value), 2)
-        self._hop_size = max(int(self.declare_parameter("hop_size", 512).value), 1)
-        self._win_size = max(int(self.declare_parameter("win_size", 2048).value),2)
+        self._win_size = max(int(self.declare_parameter("win_size", self._buffer_size // 4).value), 2)
+        self._nfft = max(int(self.declare_parameter("nfft", self._win_size).value), 2)
+        self._hop = max(int(self.declare_parameter("hop", self._win_size // 2).value), 1)
+
+        if self._win_size > self._buffer_size:
+            self.get_logger().warn(
+                f"win_size ({self._win_size}) > buffer_size ({self._buffer_size}), "
+                f"clamping win_size to buffer_size"
+            )
+            self._win_size = self._buffer_size
+
+        if self._nfft < self._win_size:
+            self.get_logger().warn(
+                f"nfft ({self._nfft}) < win_size ({self._win_size}), "
+                f"clamping nfft to win_size"
+            )
+            self._nfft = self._win_size
+
+        if self._hop >= self._win_size:
+            self.get_logger().warn(
+                f"hop ({self._hop}) >= win_size ({self._win_size}), "
+                f"clamping hop to win_size - 1"
+            )
+            self._hop = self._win_size - 1
 
         iq_topic = "iq"
         stft_topic = "stft"
@@ -39,7 +60,7 @@ class StftNode(Node):
         self.get_logger().info(
             "StftNode ready: "
             f"buf={self._buffer_size} samp  win={self._win_size}  "
-            f"fft={self._fft_size}  hop={self._hop_size}"
+            f"fft={self._nfft}  hop={self._hop}"
         )
 
     def _on_iq(self, msg: IqFrame) -> None:
@@ -75,8 +96,8 @@ class StftNode(Node):
             iq=self._iq_buffer,
             fs=self._fs_hz,
             win_size=self._win_size,
-            hop=self._hop_size,
-            nfft=self._fft_size
+            hop=self._hop,
+            nfft=self._nfft
         )
 
         if sxx.size == 0 or f_hz.size == 0 or t_s.size == 0:

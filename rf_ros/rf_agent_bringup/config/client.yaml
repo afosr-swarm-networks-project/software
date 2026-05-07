@@ -5,13 +5,12 @@ usrp_driver_node:
     rate_hz: 1.0e6
     gain_db: 10.0
     channel: 0
-    samples_per_chunk: 1024
 
 stft_node:
   ros__parameters:
-    fft_size: 2048
+    nfft:     2048
     win_size: 2048
-    hop_size: 512
+    hop:      512
 
 yolo_detector_node:
   ros__parameters:

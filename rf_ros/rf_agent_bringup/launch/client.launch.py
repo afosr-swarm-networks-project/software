@@ -15,9 +15,12 @@ def generate_launch_description() -> LaunchDescription:
     scores_topic = LaunchConfiguration("scores_topic")
 
     pipeline_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(str(pkg / "launch" / "pipeline.launch.py")),
+        PythonLaunchDescriptionSource(
+            str(get_package_share_path("rf_pipeline") / "launch" / "pipeline.launch.py")
+        ),
         launch_arguments={
-            "iq_topic":    iq_topic,
+            "config_file":  config_file,
+            "iq_topic":     iq_topic,
             "scores_topic": scores_topic,
         }.items(),
     )
@@ -33,7 +36,7 @@ def generate_launch_description() -> LaunchDescription:
 
         Node(
             package="uhd_usrp",
-            executable="usrp_driver_node.py",
+            executable="usrp_driver_node",
             name="usrp_driver_node",
             output="screen",
             parameters=[config_file],
