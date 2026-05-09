@@ -33,11 +33,17 @@ class RfDetectorNode(Node):
         )
         self._model_path = str(self.declare_parameter("model_path", default_model).value)
 
+        if self._buffer_size < 2:
+            self.get_logger().warning(f"Buffer size too small ({self._buffer_size}), setting to 2")
+            self._buffer_size = 2
         if self._win_size > self._buffer_size:
+            self.get_logger().warning(f"Window size ({self._win_size}) larger than buffer, setting to {self._buffer_size}")
             self._win_size = self._buffer_size
         if self._nfft < self._win_size:
+            self.get_logger().warning(f"FFT size ({self._nfft}) smaller than window, setting to {self._win_size}")
             self._nfft = self._win_size
         if self._hop >= self._win_size:
+            self.get_logger().warning(f"Hop size ({self._hop}) should be smaller than window, setting to {self._win_size // 2}")
             self._hop = self._win_size - 1
 
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
