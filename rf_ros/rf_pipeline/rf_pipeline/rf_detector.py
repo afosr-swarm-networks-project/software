@@ -272,18 +272,3 @@ class RfDetectorNode(Node):
             first = val[0]
             return RfDetectorNode._parse_dets(first)
         return torch.zeros((0, 6))
-
-
-def main(args=None) -> None:
-    rclpy.init(args=args)
-    node = RfDetectorNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-
-
-if __name__ == "__main__":
-    main()
