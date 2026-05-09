@@ -65,14 +65,3 @@ class ScoreboardNode(Node):
             scores_msg.scores.append(score)
 
         self._pub.publish(scores_msg)
-
-
-def main(args=None) -> None:
-    rclpy.init(args=args)
-    node = ScoreboardNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
