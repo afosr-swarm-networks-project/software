@@ -4,7 +4,7 @@ from rf_pipeline.scoreboard import ScoreboardNode
 import sys
 
 if __name__ == "__main__":
-    rclpy.init(args=sys.argv[1:])
+    rclpy.init(args=sys.argv)
     node = ScoreboardNode()
     try:
         rclpy.spin(node)
