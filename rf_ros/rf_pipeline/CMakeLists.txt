@@ -11,8 +11,7 @@ find_package(ament_cmake_python REQUIRED)
 ament_python_install_package(rf_pipeline)
 
 install(PROGRAMS
-  scripts/stft_node
-  scripts/yolo_detector
+  scripts/rf_detector
   scripts/scoreboard
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -21,8 +20,9 @@ install(DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
-install(FILES resource/best.pt
+install(DIRECTORY resource/
   DESTINATION share/${PROJECT_NAME}/resource
+  FILES_MATCHING PATTERN "*.pt" PATTERN "*.torchscript"
 )
 
 ament_package()

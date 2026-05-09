@@ -26,34 +26,25 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("stft_nfft",      default_value="2048"),
         DeclareLaunchArgument("stft_hop",       default_value="512"),
         DeclareLaunchArgument("model_path",     default_value=str(
-            get_package_share_path("rf_pipeline") / "resource" / "best.pt"
+            get_package_share_path("rf_pipeline") / "resource" / "best.torchscript"
         )),
-        DeclareLaunchArgument("conf_thresh",    default_value="0.2"),
+        DeclareLaunchArgument("conf_thresh",    default_value="0.5"),
         DeclareLaunchArgument("scoreboard_agg", default_value="max"),
 
         Node(
             package="rf_pipeline",
-            executable="stft_node",
-            name="stft_node",
+            executable="rf_detector",
+            name="rf_detector_node",
             output="screen",
             parameters=[{
                 "nfft":         stft_nfft,
                 "hop":          stft_hop,
                 "win_size":     stft_win_size,
-                "use_sim_time": use_sim_time,
-            }, config_file],
-            remappings=[("iq", iq_topic)],
-        ),
-        Node(
-            package="rf_pipeline",
-            executable="yolo_detector",
-            name="yolo_detector_node",
-            output="screen",
-            parameters=[{
                 "model_path":   model_path,
                 "conf_thresh":  conf_thresh,
                 "use_sim_time": use_sim_time,
             }, config_file],
+            remappings=[("iq", iq_topic)],
         ),
         Node(
             package="rf_pipeline",
