@@ -1,7 +1,7 @@
 usrp_driver_node:
   ros__parameters:
     device_args: "type=b200"
-    freq_hz: 915e6
+    freq_hz: 2.398e9
     rate_hz: 5e6
     gain_db: 10.0
     channel: 0
