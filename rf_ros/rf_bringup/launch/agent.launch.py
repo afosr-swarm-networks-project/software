@@ -7,8 +7,8 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:
-    pkg = get_package_share_path("rf_agent_bringup")
-    default_config = str(pkg / "config" / "client.yaml")
+    pkg = get_package_share_path("rf_bringup")
+    default_config = str(pkg / "config" / "agent.yaml")
 
     config_file = LaunchConfiguration("config_file")
     iq_topic    = LaunchConfiguration("iq_topic")
