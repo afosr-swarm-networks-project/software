@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(rf_agent_bringup)
+project(rf_bringup)
 
 find_package(ament_cmake REQUIRED)
 
